@@ -6,3 +6,4 @@ server/data/*.sqlite*
 pipeline/work/
 pipeline/out/
 .env
+*.tsbuildinfo
