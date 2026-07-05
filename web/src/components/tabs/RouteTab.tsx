@@ -9,6 +9,7 @@ import {
   saveTrack,
   setState,
   useApp,
+  visibleRoutes,
 } from '../../state/store'
 import type { Route } from '../../types'
 import { getMap } from '../../map/MapView'
@@ -30,14 +31,16 @@ export default function RouteTab(): JSX.Element {
   }
   const stats = routeStats(draftRoute, boat.cruiseKts, boat.fuelGph)
 
+  const routes = visibleRoutes(s)
+
   const save = () => {
     if (s.draftWaypoints.length < 2) return
-    const existing = s.routes.find((r) => r.id === s.editingRouteId)
+    const existing = routes.find((r) => r.id === s.editingRouteId)
     const route: Route = existing
       ? { ...existing, waypoints: s.draftWaypoints, updatedAt: Date.now() }
       : {
           id: newId('rt'),
-          name: name.trim() || `Route ${s.routes.length + 1}`,
+          name: name.trim() || `Route ${routes.length + 1}`,
           kind: 'manual',
           waypoints: s.draftWaypoints,
           reviewed: true,
@@ -174,8 +177,8 @@ export default function RouteTab(): JSX.Element {
       </section>
 
       <section>
-        <h3>Saved routes ({s.routes.length})</h3>
-        {s.routes.map((r) => (
+        <h3>Saved routes ({routes.length})</h3>
+        {routes.map((r) => (
           <div key={r.id} className="list-row">
             <button className="link" onClick={() => load(r)}>
               {r.name} {r.kind === 'auto' && <em>(auto)</em>}

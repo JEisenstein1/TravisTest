@@ -58,12 +58,17 @@ export async function syncNow(): Promise<{ boats: number; routes: number }> {
   })
   const boats = mergeLww(s.boats, remote.boats)
   const routes = mergeLww(s.routes, remote.routes)
+  // deleted items travel as tombstones ({deleted: true}); keep the active
+  // boat pointing at something visible
+  const visible = boats.filter((b) => !b.deleted)
   setState({
     boats,
     routes,
-    activeBoatId: boats.some((b) => b.id === s.activeBoatId) ? s.activeBoatId : boats[0]?.id,
+    activeBoatId: visible.some((b) => b.id === s.activeBoatId)
+      ? s.activeBoatId
+      : (visible[0] ?? boats[0])?.id,
   })
-  return { boats: boats.length, routes: routes.length }
+  return { boats: visible.length, routes: routes.filter((r) => !r.deleted).length }
 }
 
 function mergeLww<T extends { id: string; updatedAt: number }>(local: T[], remote: T[]): T[] {

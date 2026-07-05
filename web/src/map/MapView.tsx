@@ -73,6 +73,15 @@ function setSrc(map: maplibregl.Map, id: string, data: GeoJSON.FeatureCollection
   src?.setData(data)
 }
 
+/** ENC attribute values are external data — escape before building popup HTML. */
+function escHtml(v: unknown): string {
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 export default function MapView(): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -95,6 +104,7 @@ export default function MapView(): JSX.Element {
     let boatMarker: maplibregl.Marker | null = null
     let allStations: TideStation[] = []
     let encInFlight = false
+    let encRefreshQueued = false
     let disposed = false
 
     const worker = new Worker(new URL('../workers/autorouteWorker.ts', import.meta.url), {
@@ -140,7 +150,13 @@ export default function MapView(): JSX.Element {
         }
       }
 
-      if ((s.prefs.depthShading || s.prefs.hazards) && zoom >= 10 && !encInFlight) {
+      const wantEnc = s.prefs.depthShading || s.prefs.hazards
+      if (wantEnc && zoom >= 10) {
+        if (encInFlight) {
+          // a fetch for an older viewport is running — run again when it ends
+          encRefreshQueued = true
+          return
+        }
         encInFlight = true
         setState({ depthStatus: 'Loading ENC depth data…' })
         try {
@@ -158,8 +174,14 @@ export default function MapView(): JSX.Element {
           })
         } finally {
           encInFlight = false
+          if (encRefreshQueued && !disposed) {
+            // the map moved while we were fetching — refresh for the current
+            // viewport (cheap when the last fetch already covers it)
+            encRefreshQueued = false
+            void refreshOverlays()
+          }
         }
-      } else if (zoom < 10 && (s.prefs.depthShading || s.prefs.hazards)) {
+      } else if (wantEnc) {
         setState({ depthStatus: 'Zoom in for depth shading' })
       }
     }
@@ -204,7 +226,7 @@ export default function MapView(): JSX.Element {
       const rows = Object.entries(props)
         .filter(([k, v]) => v !== null && v !== '' && !/^(objl|shape|fid|objectid)/i.test(k))
         .slice(0, 8)
-        .map(([k, v]) => `<tr><td>${k}</td><td>${String(v)}</td></tr>`)
+        .map(([k, v]) => `<tr><td>${escHtml(k)}</td><td>${escHtml(v)}</td></tr>`)
         .join('')
       new maplibregl.Popup({ closeButton: true, maxWidth: '280px' })
         .setLngLat(e.lngLat)

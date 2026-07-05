@@ -1,10 +1,19 @@
 import { FT_PER_M } from '../../config'
 import { safetyDepthM } from '../../lib/depth'
-import { activeBoat, addBoat, deleteBoat, setState, updateBoat, useApp } from '../../state/store'
+import {
+  activeBoat,
+  addBoat,
+  deleteBoat,
+  setState,
+  updateBoat,
+  useApp,
+  visibleBoats,
+} from '../../state/store'
 
 export default function BoatTab(): JSX.Element {
   const s = useApp()
   const boat = activeBoat(s)
+  const boats = visibleBoats(s)
 
   const num = (label: string, key: 'draftFt' | 'safetyMarginFt' | 'cruiseKts' | 'fuelGph', step = 0.5) => (
     <label className="field">
@@ -25,14 +34,14 @@ export default function BoatTab(): JSX.Element {
     <div>
       <div className="field-row">
         <select value={boat.id} onChange={(e) => setState({ activeBoatId: e.target.value })}>
-          {s.boats.map((b) => (
+          {boats.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
             </option>
           ))}
         </select>
         <button className="btn" onClick={addBoat}>+ Add boat</button>
-        {s.boats.length > 1 && (
+        {boats.length > 1 && (
           <button className="btn danger" onClick={() => deleteBoat(boat.id)}>
             Delete
           </button>

@@ -105,13 +105,13 @@ function initialState(): AppState {
         if (saved[k] !== undefined) (base as unknown as Record<string, unknown>)[k] = saved[k]
       }
       base.prefs = { ...base.prefs, ...(saved.prefs ?? {}) }
-      if (!base.boats.length) {
+      if (!base.boats.some((b) => !b.deleted)) {
         const b = defaultBoat()
-        base.boats = [b]
+        base.boats = [...base.boats, b]
         base.activeBoatId = b.id
       }
-      if (!base.boats.some((b) => b.id === base.activeBoatId)) {
-        base.activeBoatId = base.boats[0].id
+      if (!base.boats.some((b) => b.id === base.activeBoatId && !b.deleted)) {
+        base.activeBoatId = base.boats.find((b) => !b.deleted)!.id
       }
     }
   } catch {
@@ -160,8 +160,23 @@ export function useApp(): AppState {
   return useSyncExternalStore(subscribe, getState, getState)
 }
 
+/** Boats/routes minus tombstones — what the UI should show. Deleted items
+ * stay in the arrays as `deleted: true` markers so sync propagates deletion
+ * (LWW on updatedAt) instead of resurrecting them from the server. */
+export function visibleBoats(s: AppState = state): Boat[] {
+  return s.boats.filter((b) => !b.deleted)
+}
+
+export function visibleRoutes(s: AppState = state): Route[] {
+  return s.routes.filter((r) => !r.deleted)
+}
+
 export function activeBoat(s: AppState = state): Boat {
-  return s.boats.find((b) => b.id === s.activeBoatId) ?? s.boats[0]
+  return (
+    s.boats.find((b) => b.id === s.activeBoatId && !b.deleted) ??
+    visibleBoats(s)[0] ??
+    s.boats[0]
+  )
 }
 
 // ---- mutations used across components ----
@@ -174,17 +189,23 @@ export function updateBoat(id: string, patch: Partial<Boat>): void {
 
 export function addBoat(): void {
   const b = defaultBoat()
-  b.name = `Boat ${state.boats.length + 1}`
+  b.name = `Boat ${visibleBoats(state).length + 1}`
   setState((s) => ({ boats: [...s.boats, b], activeBoatId: b.id }))
 }
 
 export function deleteBoat(id: string): void {
   setState((s) => {
-    const boats = s.boats.filter((b) => b.id !== id)
-    const safe = boats.length ? boats : [defaultBoat()]
+    const now = Date.now()
+    let boats = s.boats.map((b) => (b.id === id ? { ...b, deleted: true, updatedAt: now } : b))
+    let visible = boats.filter((b) => !b.deleted)
+    if (visible.length === 0) {
+      const fresh = defaultBoat()
+      boats = [...boats, fresh]
+      visible = [fresh]
+    }
     return {
-      boats: safe,
-      activeBoatId: safe.some((b) => b.id === s.activeBoatId) ? s.activeBoatId : safe[0].id,
+      boats,
+      activeBoatId: visible.some((b) => b.id === s.activeBoatId) ? s.activeBoatId : visible[0].id,
     }
   })
 }
@@ -202,7 +223,9 @@ export function saveRoute(route: Route): void {
 
 export function deleteRoute(id: string): void {
   setState((s) => ({
-    routes: s.routes.filter((r) => r.id !== id),
+    routes: s.routes.map((r) =>
+      r.id === id ? { ...r, deleted: true, updatedAt: Date.now() } : r,
+    ),
     editingRouteId: s.editingRouteId === id ? null : s.editingRouteId,
   }))
 }

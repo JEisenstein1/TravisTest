@@ -14,6 +14,8 @@ export interface Boat {
   /** Optional air draft (bridge clearance), feet */
   heightFt?: number
   updatedAt: number
+  /** Tombstone: kept in the synced array so deletion propagates via LWW */
+  deleted?: boolean
 }
 
 export interface Waypoint {
@@ -34,6 +36,8 @@ export interface Route {
   reviewed: boolean
   createdAt: number
   updatedAt: number
+  /** Tombstone: kept in the synced array so deletion propagates via LWW */
+  deleted?: boolean
 }
 
 export interface TrackPoint {

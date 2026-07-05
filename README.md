@@ -43,6 +43,8 @@ npm run dev          # web app on http://localhost:5173
 ```
 
 That's it — the app runs against live NOAA/Open-Meteo services with no keys.
+Requires **Node ≥ 22.13** (the server uses `node:sqlite` and type stripping,
+which older 22.x releases gate behind flags).
 Optional sync server (accounts + cross-device boats/routes):
 
 ```bash
