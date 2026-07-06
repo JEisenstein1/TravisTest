@@ -181,8 +181,11 @@ export function buildStyle(): StyleSpecification {
 
 /** MapLibre expression coloring DEPARE polygons against a safety depth (m). */
 export function depthFillColor(safetyM: number): unknown {
-  const d1 = ['coalesce', ['to-number', ['get', 'drval1']], ['to-number', ['get', 'DRVAL1']], -1]
-  const d2 = ['coalesce', ['to-number', ['get', 'drval2']], ['to-number', ['get', 'DRVAL2']], -1]
+  // IMPORTANT: to-number must wrap the coalesce, not sit inside it —
+  // to-number(null) is 0 in MapLibre, so an inner to-number would turn a
+  // missing/null attribute into "0 m deep" and shade everything unsafe.
+  const d1 = ['to-number', ['coalesce', ['get', 'drval1'], ['get', 'DRVAL1'], -1]]
+  const d2 = ['to-number', ['coalesce', ['get', 'drval2'], ['get', 'DRVAL2'], -1]]
   return [
     'case',
     // no depth attributes → unknown, faint gray

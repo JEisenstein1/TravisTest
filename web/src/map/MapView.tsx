@@ -16,7 +16,7 @@ import {
 } from '../state/store'
 import { fetchEncFeatures, type Bbox, type FeatureSetKinds } from '../services/encdirect'
 import { fetchTideStations, type TideStation } from '../services/coops'
-import { safetyDepthM } from '../lib/depth'
+import { depthRange, safetyDepthM } from '../lib/depth'
 import { makeWaypoint } from '../lib/geo'
 import { setDepthFeatures } from '../nav/geolocation'
 import type { AutorouteInput, AutorouteResult } from '../lib/autoroute'
@@ -165,8 +165,16 @@ export default function MapView(): JSX.Element {
           setSrc(map, 'depth-areas', fc(features.depthAreas))
           setSrc(map, 'hazards', fc(features.hazardPoints))
           setSrc(map, 'navaids', fc(features.navaids))
+          // surface attribute problems instead of silently shading wrong
+          const withDepth = features.depthAreas.filter((f) =>
+            depthRange((f.properties ?? {}) as Record<string, unknown>),
+          ).length
+          const attrWarn =
+            features.depthAreas.length > 0 && withDepth < features.depthAreas.length / 2
+              ? ' · ⚠ depth attributes missing'
+              : ''
           setState({
-            depthStatus: `${features.depthAreas.length} depth areas · ${features.hazardPoints.length} hazards`,
+            depthStatus: `${features.depthAreas.length} depth areas · ${features.hazardPoints.length} hazards${attrWarn}`,
           })
         } catch (err) {
           setState({

@@ -158,10 +158,14 @@ export function buildGrid(input: AutorouteInput, padScale = 0.35): NavGrid {
     }
   }
 
-  // Hazard points (wrecks, rocks, obstructions): block the cell + neighbors
+  // Hazard points (wrecks, rocks, obstructions): block the cell + neighbors.
+  // A hazard with a charted sounding/swept depth (VALSOU) that clears the
+  // safety depth is overflown by chart semantics — don't block on it.
   for (const f of input.hazardPoints) {
     const g = f.geometry
     if (!g || g.type !== 'Point') continue
+    const valsou = numProp(f.properties ?? {}, 'valsou')
+    if (valsou !== null && valsou >= input.safetyM + 0.5) continue
     const [lon, lat] = g.coordinates as [number, number]
     if (lon < spec.minLon || lon > spec.maxLon || lat < spec.minLat || lat > spec.maxLat) continue
     const [c, r] = pointToCell(spec, lon, lat)
@@ -178,6 +182,16 @@ export function buildGrid(input: AutorouteInput, padScale = 0.35): NavGrid {
 
   applyProximityPenalty(spec, cost)
   return { spec, cost }
+}
+
+function numProp(props: Record<string, unknown>, key: string): number | null {
+  const v = props[key] ?? props[key.toUpperCase()]
+  if (typeof v === 'number' && isFinite(v)) return v
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v)
+    return isFinite(n) ? n : null
+  }
+  return null
 }
 
 function bucketByColumn(spec: GridSpec, polys: IndexedPoly[]): IndexedPoly[][] {
@@ -375,7 +389,7 @@ export function autoroute(input: AutorouteInput): AutorouteResult {
   let last: AutorouteResult = { ok: false, reason: 'No route', waypoints: [], cellsBlocked: 0, cellsTotal: 0 }
   for (const padScale of [0.35, 0.8, 1.4]) {
     last = attempt(input, padScale)
-    if (last.ok || last.reason === UNREACHABLE_ENDPOINT) return last
+    if (last.ok || last.reason?.startsWith(UNREACHABLE_ENDPOINT)) return last
   }
   return last
 }
@@ -390,12 +404,18 @@ function attempt(input: AutorouteInput, padScale: number): AutorouteResult {
   for (let i = 0; i < cost.length; i++) if (cost[i] === 0) blocked++
   const base = { cellsBlocked: blocked, cellsTotal: cost.length }
 
-  const startCell = nearestPassable(grid, pointToCell(spec, input.start.lon, input.start.lat))
-  const endCell = nearestPassable(grid, pointToCell(spec, input.end.lon, input.end.lat))
-  if (!startCell || !endCell) {
-    return { ok: false, reason: UNREACHABLE_ENDPOINT, waypoints: [], ...base }
+  const startSnap = nearestPassable(grid, pointToCell(spec, input.start.lon, input.start.lat))
+  const endSnap = nearestPassable(grid, pointToCell(spec, input.end.lon, input.end.lat))
+  if (!startSnap || !endSnap) {
+    const which = !startSnap && !endSnap ? 'Start and destination are' : !startSnap ? 'Start is' : 'Destination is'
+    return {
+      ok: false,
+      reason: `${UNREACHABLE_ENDPOINT} (${which} too far from water that clears your safety depth — tap a point shown as safe/caution in the depth shading, or reduce the draft.)`,
+      waypoints: [],
+      ...base,
+    }
   }
-  const path = astar(grid, startCell, endCell)
+  const path = astar(grid, startSnap.cell, endSnap.cell)
   if (!path) {
     return {
       ok: false,
@@ -406,17 +426,24 @@ function attempt(input: AutorouteInput, padScale: number): AutorouteResult {
   }
   const smoothed = smoothPath(grid, path)
   const waypoints = smoothed.map((i) => cellCenter(spec, i % spec.cols, (i / spec.cols) | 0))
-  // pin exact endpoints
-  waypoints[0] = [input.start.lon, input.start.lat]
-  waypoints[waypoints.length - 1] = [input.end.lon, input.end.lat]
+  // Pin the exact tapped point only when it is (near) passable water; if the
+  // endpoint had to snap more than a couple of cells, the route must end at
+  // the snapped safe-water point — never silently cross the shallows between.
+  if (startSnap.dist <= 2) waypoints[0] = [input.start.lon, input.start.lat]
+  if (endSnap.dist <= 2) waypoints[waypoints.length - 1] = [input.end.lon, input.end.lat]
   return { ok: true, waypoints, ...base }
 }
 
-/** Find the nearest passable cell within a small radius (start may sit on a dock). */
-function nearestPassable(grid: NavGrid, cell: [number, number]): [number, number] | null {
+/** Find the nearest passable cell nearby (a start often sits on a dock or in
+ * a slip that's blocked at grid resolution). Radius stays small on purpose:
+ * a big snap would let the route pretend shallow water isn't there. */
+function nearestPassable(
+  grid: NavGrid,
+  cell: [number, number],
+): { cell: [number, number]; dist: number } | null {
   const { spec, cost } = grid
   const [c, r] = cell
-  if (cost[cellIndex(spec, c, r)] !== 0) return [c, r]
+  if (cost[cellIndex(spec, c, r)] !== 0) return { cell: [c, r], dist: 0 }
   for (let radius = 1; radius <= 6; radius++) {
     for (let dr = -radius; dr <= radius; dr++) {
       for (let dc = -radius; dc <= radius; dc++) {
@@ -424,7 +451,7 @@ function nearestPassable(grid: NavGrid, cell: [number, number]): [number, number
         const rr = r + dr
         const cc = c + dc
         if (rr < 0 || rr >= spec.rows || cc < 0 || cc >= spec.cols) continue
-        if (cost[cellIndex(spec, cc, rr)] !== 0) return [cc, rr]
+        if (cost[cellIndex(spec, cc, rr)] !== 0) return { cell: [cc, rr], dist: radius }
       }
     }
   }
