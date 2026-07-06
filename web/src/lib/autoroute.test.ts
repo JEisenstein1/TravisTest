@@ -91,4 +91,35 @@ describe('autoroute', () => {
     const r = autoroute({ ...base, depthAreas: [], blockedAreas: [] })
     expect(r.ok).toBe(false)
   })
+
+  it('works with uppercase S-57 attribute names (raw ENC Direct casing)', () => {
+    const upper = rect(-73.5, 40.5, -72.5, 41.5, { DRVAL1: 10, DRVAL2: 30 })
+    const r = autoroute({ ...base, depthAreas: [upper], blockedAreas: [] })
+    expect(r.ok).toBe(true)
+    expect(r.waypoints.length).toBe(2)
+  })
+
+  it('does not block on hazards whose charted depth clears the keel', () => {
+    const hazardOnTrack = (props: Record<string, unknown>): GeoJsonFeature => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [-73.0, 40.8] },
+      properties: props,
+    })
+    // deep wreck (VALSOU 20 m) directly on the straight line → ignored
+    const over = autoroute({
+      ...base,
+      blockedAreas: [],
+      hazardPoints: [hazardOnTrack({ valsou: 20 })],
+    })
+    expect(over.ok).toBe(true)
+    expect(over.waypoints.length).toBe(2)
+    // same hazard with no charted depth → blocked, route must bend
+    const around = autoroute({
+      ...base,
+      blockedAreas: [],
+      hazardPoints: [hazardOnTrack({})],
+    })
+    expect(around.ok).toBe(true)
+    expect(around.waypoints.length).toBeGreaterThan(2)
+  })
 })

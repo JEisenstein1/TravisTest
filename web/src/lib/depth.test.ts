@@ -12,6 +12,9 @@ describe('depthRange', () => {
   it('returns null when absent', () => {
     expect(depthRange({ foo: 1 })).toBeNull()
   })
+  it('returns null for explicit null values (ArcGIS emits all fields)', () => {
+    expect(depthRange({ drval1: null, drval2: null })).toBeNull()
+  })
 })
 
 describe('classifyDepth', () => {

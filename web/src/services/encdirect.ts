@@ -105,6 +105,16 @@ async function queryLayer(band: Band, layerId: number, bbox: Bbox): Promise<GeoJ
     }
     if (data.error) throw new Error(data.error.message ?? 'ENC Direct query error')
     const batch = data.features ?? []
+    // ENC Direct field names are uppercase S-57 acronyms (DRVAL1, VALSOU…).
+    // Normalize keys to lowercase here so the style expressions, depth model
+    // and router never have to care about attribute casing.
+    for (const f of batch) {
+      if (f.properties) {
+        const norm: Record<string, unknown> = {}
+        for (const [k, v] of Object.entries(f.properties)) norm[k.toLowerCase()] = v
+        f.properties = norm
+      }
+    }
     features.push(...batch)
     const more = data.exceededTransferLimit ?? data.properties?.exceededTransferLimit ?? false
     if (!more || batch.length === 0) break
