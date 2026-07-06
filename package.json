@@ -1,0 +1,21 @@
+{
+  "name": "soundline",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Free recreational marine navigation app — NOAA ENC charting, draft-aware depth shading, routing, tides & weather. Argo-class build per docs/RESEARCH.md.",
+  "workspaces": [
+    "web",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w web",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w web && npm run build -w server",
+    "test": "npm run test -w web && npm run test -w server",
+    "typecheck": "npm run typecheck -w web && npm run typecheck -w server",
+    "start": "npm run start -w server"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}
