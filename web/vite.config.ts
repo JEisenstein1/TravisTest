@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
+  // Serve from a sub-path when deployed to GitHub Pages (set VITE_BASE=/TravisTest/)
+  base: process.env.VITE_BASE || '/',
   plugins: [react()],
   server: {
     port: 5173,
