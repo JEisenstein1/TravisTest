@@ -164,6 +164,48 @@
   .proto.warn{color:#B54708}
   .sim-note{margin:16px 20px 0;background:#EEF4FF;border:1px solid #C7D7FE;border-radius:14px;
     padding:14px 16px;color:#2E4A9E;font-size:13.5px;line-height:1.5}
+
+  /* health streak */
+  .streak-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 16px}
+  .streak-head h2{font-size:22px;margin:0;font-weight:700}
+  .streak-pill{background:#FFF1E6;color:#C15A1B;font-weight:700;font-size:14px;padding:6px 14px;border-radius:20px}
+  .streak-row{display:flex;gap:10px;justify-content:space-between}
+  .streak-col{flex:1;text-align:center}
+  .streak-node{height:64px;border-radius:16px;border:1.5px dashed #C4CBDA;display:grid;place-items:center;
+    font-weight:700;color:var(--muted);font-size:15px}
+  .streak-node.done{border-style:solid;border-color:var(--navy);background:var(--navy);color:#fff}
+  .streak-node.due{border-style:solid;border-color:#F5A243;color:#C15A1B;background:#FFF6ED}
+  .streak-date{font-size:12px;color:var(--muted);margin-top:6px}
+  .streak-msg{margin-top:16px;background:#EAF1FF;color:#2E4A9E;border-radius:14px;padding:14px 16px;
+    font-size:14.5px;font-weight:500}
+
+  /* graph modal */
+  .sheet-back{position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:40;display:none}
+  .sheet-back.open{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;background:#fff;z-index:41;
+    border-radius:22px 22px 0 0;padding:20px 20px 30px;transform:translateY(100%);transition:transform .25s ease;
+    max-height:88vh;overflow-y:auto}
+  .sheet.open{transform:translateY(0)}
+  .sheet-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .sheet-h .st{font-size:22px;font-weight:700;color:var(--navy)}
+  .sheet-h .x{background:#F2F4F7;border-radius:50%;width:34px;height:34px;font-size:18px;color:var(--ink)}
+  .range-tabs{display:flex;gap:6px;background:#F2F4F7;border-radius:12px;padding:5px;margin-bottom:18px}
+  .range-tabs button{flex:1;border-radius:9px;padding:9px 0;font-weight:600;font-size:14px;background:transparent;color:var(--muted)}
+  .range-tabs button.on{background:var(--navy);color:#fff}
+  .graph-sub{font-size:15px;font-weight:600;margin-bottom:2px}
+  .graph-sub small{display:block;color:var(--muted);font-weight:400;margin-top:2px}
+  .graph-wrap{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 12px;margin-top:12px}
+  .graph-empty{text-align:center;color:var(--muted);padding:26px 10px 8px}
+  .graph-empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px;font-weight:600}
+  .see-graph{color:var(--navy);font-weight:600;font-size:14px;margin-top:12px;display:inline-block;cursor:pointer}
+
+  /* results chat bubble */
+  .chat-bubble{position:fixed;left:20px;bottom:22px;max-width:280px;background:var(--navy);color:#fff;
+    border-radius:16px;padding:14px 16px;box-shadow:var(--shadow);z-index:20;cursor:pointer}
+  .chat-bubble .cx{position:absolute;top:-8px;left:-8px;width:22px;height:22px;border-radius:50%;background:#fff;
+    color:var(--ink);display:grid;place-items:center;font-size:13px;box-shadow:var(--shadow)}
+  .chat-bubble .ct{font-size:14.5px;line-height:1.35}
+  .chat-bubble .cs{text-decoration:underline;font-weight:700;margin-top:4px;display:inline-block}
 </style>
 </head>
 <body>
@@ -192,6 +234,11 @@
     </div>
   </div>
   <div class="section">
+    <div class="streak-head"><h2>Your health streak</h2><span class="streak-pill" id="streakPill">0 tests</span></div>
+    <div class="streak-row" id="streakRow"></div>
+    <div class="streak-msg" id="streakMsg"></div>
+  </div>
+  <div class="section">
     <h2>3-month health trends</h2>
     <div id="trendList"></div>
   </div>
@@ -205,7 +252,21 @@
   <div class="res-top"><button class="back" onclick="go('history')">‹</button><span class="date" id="resDate">Result</span></div>
   <div id="simNote" class="sim-note"></div>
   <div id="resBody"></div>
+  <div class="chat-bubble" id="chatBubble" onclick="healthChat()">
+    <div class="cx" onclick="event.stopPropagation();dismissChat()">✕</div>
+    <div class="ct">Hi, let's talk about your results.</div>
+    <span class="cs">Start chat</span>
+  </div>
 </section>
+
+<!-- ============ PER-ANALYTE GRAPH SHEET ============ -->
+<div class="sheet-back" id="sheetBack" onclick="closeGraph()"></div>
+<div class="sheet" id="graphSheet">
+  <div class="sheet-h"><span class="st" id="graphTitle">Analyte</span><button class="x" onclick="closeGraph()">✕</button></div>
+  <div class="range-tabs" id="rangeTabs"></div>
+  <div class="graph-sub" id="graphSub"></div>
+  <div class="graph-wrap" id="graphWrap"></div>
+</div>
 
 <!-- ================= HISTORY ================= -->
 <section id="history" class="screen">
@@ -318,6 +379,7 @@ function go(id){
 /* ---------- home ---------- */
 function renderHome(){
   document.getElementById('testCount').textContent = String(history.length).padStart(2,'0');
+  renderStreak();
   if(!history.length){
     document.getElementById('scoreGrade').textContent = '—';
     document.getElementById('scoreFrac').textContent = 'no tests';
@@ -341,12 +403,89 @@ function renderHome(){
   const list = document.getElementById('trendList');
   list.innerHTML = ANALYTES.map(a=>{
     const idx = latest[a.key];
-    return `<div class="trend" onclick="openResult(0)">
+    return `<div class="trend" onclick="openGraph('${a.key}')">
       <div class="ic" style="background:${a.color}">${a.name.slice(0,2).toUpperCase()}</div>
       <div><div class="nm">${a.name}</div><div class="vl">${valStr(a,idx)}</div></div>
       <div class="go">›</div></div>`;
   }).join('');
 }
+
+/* ---------- health streak ---------- */
+const DAY_MS = 86400000, STREAK_PERIOD = 14;
+function testDate(h){ return new Date(h.protocol && h.protocol.at ? h.protocol.at : h.date); }
+function renderStreak(){
+  const pill=document.getElementById('streakPill');
+  const row=document.getElementById('streakRow');
+  const msg=document.getElementById('streakMsg');
+  if(!pill||!row||!msg) return;
+  pill.textContent = history.length + (history.length===1 ? ' test' : ' tests');
+  const now=new Date(); now.setHours(0,0,0,0);
+  const testDays = history.map(h=>{ const d=testDate(h); d.setHours(0,0,0,0); return d.getTime(); });
+  let anchor = new Date(now);
+  if(history.length){ anchor = new Date(Math.min(...testDays)); }   // streak starts at first test
+  const nodes=[]; for(let k=0;k<5;k++) nodes.push(new Date(anchor.getTime()+k*STREAK_PERIOD*DAY_MS));
+  let dueIdx = nodes.findIndex(d=>d.getTime()>now.getTime());
+  if(!history.length) dueIdx=0; else if(dueIdx<0) dueIdx=nodes.length-1;
+  const fmt=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  row.innerHTML = nodes.map((d,k)=>{
+    const done = history.length && testDays.some(t=>t>=d.getTime() && t<d.getTime()+STREAK_PERIOD*DAY_MS);
+    let cls='streak-node', inner='';
+    if(done){ cls+=' done'; inner='✓'; }
+    else if(k===dueIdx){ cls+=' due'; inner=Math.max(0,Math.round((d-now)/DAY_MS))+'d'; }
+    return `<div class="streak-col"><div class="${cls}">${inner}</div><div class="streak-date">${fmt(d)}</div></div>`;
+  }).join('');
+  const days=Math.max(0,Math.round((nodes[dueIdx]-now)/DAY_MS));
+  msg.textContent = !history.length ? 'Take your first test to start your health streak.'
+    : days===0 ? 'A test is due today to keep your streak.'
+    : `Test in ${days} day${days===1?'':'s'} to keep your streak.`;
+}
+
+/* ---------- per-analyte graph ---------- */
+const RANGES=[['1D',1],['1W',7],['1M',30],['3M',91],['6M',182],['1Y',365]];
+const RANGE_LABEL={1:'past day',7:'past week',30:'past month',91:'past 3 months',182:'past 6 months',365:'past year'};
+let graphKey=null, graphRange='1M';
+function openGraph(key){ graphKey=key; graphRange='1M'; renderGraph();
+  document.getElementById('sheetBack').classList.add('open');
+  document.getElementById('graphSheet').classList.add('open'); }
+function closeGraph(){ document.getElementById('sheetBack').classList.remove('open');
+  document.getElementById('graphSheet').classList.remove('open'); }
+function setRange(r){ graphRange=r; renderGraph(); }
+function renderGraph(){
+  const a=byKey(graphKey); if(!a) return;
+  document.getElementById('graphTitle').textContent=a.name;
+  document.getElementById('rangeTabs').innerHTML=RANGES.map(([r])=>
+    `<button class="${r===graphRange?'on':''}" onclick="setRange('${r}')">${r}</button>`).join('');
+  const days=RANGES.find(([r])=>r===graphRange)[1], label=RANGE_LABEL[days];
+  document.getElementById('graphSub').innerHTML=
+    `Levels over the ${label}<small>${a.unit?('Measured in '+a.unit):'Level band'}</small>`;
+  const now=Date.now();
+  const pts=history.map(h=>({t:testDate(h).getTime(), idx:h.reading[a.key]}))
+    .filter(p=>!isNaN(p.t) && p.idx!=null && (now-p.t)<=days*DAY_MS)
+    .sort((x,y)=>x.t-y.t);
+  const wrap=document.getElementById('graphWrap');
+  wrap.innerHTML = pts.length ? sparkline(a,pts,days)
+    : `<div class="graph-empty"><b>No tests in the ${label}</b>Try another date range to see your health trends over time.</div>`;
+}
+function sparkline(a,pts,days){
+  const W=320,H=180,padL=46,padR=14,padT=12,padB=24, maxI=a.levels.length-1;
+  const now=Date.now(), t0=now-days*DAY_MS;
+  const x=t=>padL+(W-padL-padR)*(pts.length<2?0.5:Math.max(0,Math.min(1,(t-t0)/(now-t0))));
+  const y=i=>padT+(H-padT-padB)*(1-(maxI? i/maxI:0));
+  const ticks=[...new Set([0,Math.round(maxI/2),maxI])];
+  let g='';
+  ticks.forEach(i=>{ const yy=y(i);
+    g+=`<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="#EAECF0" stroke-dasharray="3 3"/>`
+     + `<text x="${padL-6}" y="${yy+4}" text-anchor="end" font-size="11" fill="#98A2B3">${a.levels[i]}</text>`; });
+  const path=pts.map((p,k)=>`${k?'L':'M'}${x(p.t).toFixed(1)},${y(p.idx).toFixed(1)}`).join(' ');
+  g+=`<path d="${path}" fill="none" stroke="#12235B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const last=pts[pts.length-1];
+  g+=`<circle cx="${x(last.t).toFixed(1)}" cy="${y(last.idx).toFixed(1)}" r="5" fill="#12235B"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${g}</svg>`;
+}
+
+/* ---------- results chat stub ---------- */
+function healthChat(){ alert('Health chat — not part of the strip pipeline; stub only.'); }
+function dismissChat(){ const b=document.getElementById('chatBubble'); if(b) b.style.display='none'; }
 
 /* ---------- wizard ---------- */
 const STEPS = [
@@ -522,7 +661,7 @@ function groupsFrom(reading){
 }
 const MODE_NOTE = {
   'real':          '',
-  'sim-nochart':   '✓ Card detected, rectified and colour-corrected — the geometry and colour pipeline are working. Scoring is simulated until the per-analyte level colours are captured in calibrate.html. (Run <code>__lastAnalysis</code> in the console to see each pad\u2019s measured Lab.)',
+  'sim-nochart':   '⚠ Card detected, but colour correction didn’t converge on this photo, so the levels below are simulated. Retake with the whole card in frame under even, indirect light. (Run <code>__lastAnalysis</code> in the console to see each pad’s measured Lab.)',
   'sim-markers-not-found': '⚠ Couldn\u2019t find all four corner markers — showing a simulated panel. Make sure the whole card is in frame with space around it, in even light.',
   'sim-corner-ordering-failed': '⚠ Found markers but couldn’t order the corners — simulated panel shown. Set MARKER_IDS once you know the card’s IDs.',
   'sim-aruco-lib-missing': '⚙ Simulation mode: js-aruco2 isn’t loaded. Host this with the library to run the real reading.',
@@ -534,6 +673,7 @@ const MODE_NOTE = {
 function openResult(i, simulated, mode){
   const rec = history[i];
   document.getElementById('resDate').textContent = rec.date;
+  const cb=document.getElementById('chatBubble'); if(cb) cb.style.display='';
   let note = simulated ? (MODE_NOTE[mode] ?? '⚙ Simulated analysis — the flow and interpretation are real; scoring needs the card measured.') : '';
   if(rec.protocol){
     const pm=rec.protocol.standMinutes;
@@ -566,6 +706,7 @@ function openResult(i, simulated, mode){
           </div>
         </div>
         <div class="desc">${a.desc}</div>
+        <div class="see-graph" onclick="openGraph('${a.key}')">See Graph →</div>
       </div>`;
     }).join('');
     return `<div class="grp">

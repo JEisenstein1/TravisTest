@@ -263,8 +263,11 @@ function analyze(imageData){
   }
   if(!cc) warnings.push('colour-correction-unavailable: colours uncorrected');
 
-  // quality gate — thresholds derived from real-photo pad variance (good <4)
-  const QUALITY={ maxResidualDE:6, maxPadSD:12 };
+  // quality gate — thresholds derived from real-photo pad variance. maxPadSD
+  // recalibrated 2026-07-23: 6 in-focus distilled-water photos read correctly
+  // yet showed per-pad sd up to ~18 (real reagent-pad texture, not a defect),
+  // so 12 flagged every good photo. 22 keeps genuinely bad frames flagged.
+  const QUALITY={ maxResidualDE:6, maxPadSD:22 };
   const quality={ retake:false, reasons:[] };
   if(ccResidual!==null && ccResidual>QUALITY.maxResidualDE){
     quality.retake=true; quality.reasons.push('colour correction poor (residual '+ccResidual+') — check lighting/focus'); }

@@ -1,5 +1,5 @@
 /* Offline cache. Bump CACHE when you change any asset. */
-const CACHE = 'checkup-v2';
+const CACHE = 'checkup-v3';
 const ASSETS = [
   './', './index.html', './calibrate.html',
   './card-calibration.js', './strip-analysis.js',
