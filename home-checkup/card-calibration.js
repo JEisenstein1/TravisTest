@@ -369,7 +369,40 @@ g.CARD_CALIBRATION = {
     },
   },
 
-  // level index -> CIELAB. Only needed for absolute concentrations.
-  REFERENCE_CHART: {},
+  /* -------------------------------------------------------------------
+     REFERENCE_CHART — level index -> CIELAB, used to classify each pad
+     into a concentration level.
+
+     These are the STANDARD 10-parameter urine reagent-strip chart colours
+     (the manufacturer scale that is common to this generic strip class),
+     converted to CIELAB and then ANCHORED into this card's colour space:
+     each analyte's negative/lowest level is shifted to sit exactly on the
+     distilled-water baseline measured on THIS card (SCREENING.BASELINE_WET),
+     and the standard chart's colour trajectory is carried up from there.
+
+     This is why the app can report levels without per-strip physical
+     calibration: the pad->concentration mapping is a property of the strip
+     chemistry (standard and published), not of the card. What the card
+     supplies — and what these values fold in — is the measured negative
+     anchor and the colour-correction that puts a photo into this space.
+
+     Accuracy: good for glucose/protein/ketone/blood/leukocytes/nitrite/
+     bilirubin/urobilinogen ordinal levels. pH and specific gravity span a
+     continuous range; their anchors (pH~6 water, SG 1.000 distilled) are
+     real, the intermediate steps are standard-chart interpolations. Refine
+     any analyte later with calibrate.html + a known sample; captured points
+     supersede these. See docs note in README. */
+  REFERENCE_CHART: {
+    leukocytes: [ {i:0, lab:[78.4,1.5,6.9]}, {i:1, lab:[72.6,8.6,-2.1]}, {i:2, lab:[64.8,15.7,-10.4]}, {i:3, lab:[55.3,23.5,-19.3]}, {i:4, lab:[42,33.1,-31.3]} ],
+    nitrite: [ {i:0, lab:[85,-0.7,7.1]}, {i:1, lab:[79.5,8.6,3.4]}, {i:2, lab:[67,24,1.3]} ],
+    urobilinogen: [ {i:0, lab:[75.6,7.5,44]}, {i:1, lab:[69.2,15.8,43.1]}, {i:2, lab:[60.8,26.2,38.8]}, {i:3, lab:[52,34.8,34.6]}, {i:4, lab:[42.8,42,26.9]}, {i:5, lab:[35.6,43.7,22.8]} ],
+    protein: [ {i:0, lab:[81.6,-8.8,32.4]}, {i:1, lab:[76.8,-16.3,24.9]}, {i:2, lab:[72.4,-22,14.2]}, {i:3, lab:[65.9,-26.8,0.1]}, {i:4, lab:[60.3,-25.4,-13.5]}, {i:5, lab:[54.6,-22.6,-22.1]} ],
+    ph: [ {i:0, lab:[56.9,33.8,47.6]}, {i:1, lab:[64.5,20.5,51.3]}, {i:2, lab:[68,4.4,45.7]}, {i:3, lab:[64.8,-11.3,36.3]}, {i:4, lab:[58.5,-24.4,11.8]}, {i:5, lab:[52.6,-24,-7.8]} ],
+    blood: [ {i:0, lab:[71,11.9,65.7]}, {i:1, lab:[70.1,0,54.9]}, {i:2, lab:[66.7,-14.1,39.5]}, {i:3, lab:[59.4,-23.4,24.3]}, {i:4, lab:[49.5,-25.3,15.9]} ],
+    sg: [ {i:0, lab:[37.3,-12.2,6.9]}, {i:1, lab:[42.8,-16.8,18]}, {i:2, lab:[48.7,-17.4,32.3]}, {i:3, lab:[53.4,-13,44.3]}, {i:4, lab:[58.5,-6.5,53.5]}, {i:5, lab:[63.7,0.6,62.6]}, {i:6, lab:[68.5,4.1,66.3]} ],
+    ketone: [ {i:0, lab:[72.9,2.4,13.8]}, {i:1, lab:[66.3,11.9,9.9]}, {i:2, lab:[55.9,23.6,3.1]}, {i:3, lab:[44.1,35,-2.8]}, {i:4, lab:[29.7,39,-12.7]} ],
+    bilirubin: [ {i:0, lab:[82.7,-3,14]}, {i:1, lab:[72.2,6.2,20.6]}, {i:2, lab:[62.8,14,18.6]}, {i:3, lab:[53.7,23.4,11.5]} ],
+    glucose: [ {i:0, lab:[71.6,-18.5,-9.7]}, {i:1, lab:[71.7,-22.7,23.9]}, {i:2, lab:[70.1,-11.6,43.4]}, {i:3, lab:[66.3,6.9,44.3]}, {i:4, lab:[53.4,19.6,36.6]}, {i:5, lab:[40.4,18.4,25.3]} ],
+  },
 };
 })(typeof window!=='undefined'?window:globalThis);

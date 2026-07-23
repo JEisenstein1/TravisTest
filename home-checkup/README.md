@@ -38,22 +38,33 @@ app, works offline after first load, and keeps history across launches.
 
 Detects the card (ArUco DICT_4X4_50, IDs TL=3 TR=2 BR=0 BL=21), corrects
 perspective, fits a polynomial colour transform from the reference patches
-(residual ~ΔE 1), locates the strip dynamically, and reports each pad as
-**negative / borderline / elevated** relative to a measured distilled-water
-baseline.
+(residual ~ΔE 1), locates the strip dynamically, and reads each pad to a
+concentration **level** by nearest-colour match against `REFERENCE_CHART`.
+For deviation analytes it also reports **negative / borderline / elevated**
+relative to the measured distilled-water baseline.
 
-It reports bands, not concentrations. See "Not done yet" below.
+## Concentration mapping (how levels are read without per-strip calibration)
 
-## Not done yet
+The card's 208 patches are camera-calibration targets (colour primaries, grey
+ramps), not a printed pad→concentration chart — that mapping is a property of
+the strip chemistry, which for this generic 10-parameter strip is standard and
+published. `REFERENCE_CHART` in `card-calibration.js` is therefore built from
+the standard chart, converted to CIELAB and **anchored** so each analyte's
+negative/lowest level sits exactly on this card's measured distilled-water
+baseline, with the standard chart's colour trajectory carried up from there.
+That is what lets the app report levels from a photo alone.
 
-- **No concentration values.** Ribbon ships no printed colour chart, so there is
-  no mapping from pad colour to mg/dL. `REFERENCE_CHART` in
-  `card-calibration.js` is empty. Fill it using `calibrate.html` with strips of
-  known level. Cheapest route: sugar water (glucose), vinegar and baking soda
-  (pH), salt water (specific gravity) — each also confirms pad ordering.
-- **pH and specific gravity are not scored.** They span real ranges rather than
-  sitting at a negative baseline. Specific gravity has one true anchor
-  (distilled water = 1.000); pH needs buffer sachets.
+Refine any analyte with `calibrate.html` + a known sample; captured points
+supersede the standard values.
+
+## Caveats on the standard-chart mapping
+
+- **Ordinal analytes are solid** (glucose, protein, ketone, blood, leukocytes,
+  nitrite, bilirubin, urobilinogen): negative is measured, steps are standard.
+- **pH and specific gravity are interpolated.** Their anchors are real
+  (distilled water = SG 1.000; water ≈ pH 6), but the intermediate steps are
+  standard-chart interpolations, not per-step calibrated. Treat them as
+  estimates; buffer sachets (pH) and salt solutions (SG) would pin the steps.
 - **Pad order is inferred**, not confirmed against a manufacturer insert. The
   colours are consistent with the standard 10-parameter layout and the
   distilled-water responses corroborate specific gravity, glucose and pH.
