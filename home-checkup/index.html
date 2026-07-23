@@ -118,6 +118,12 @@
     justify-content:center;padding:16px;border-bottom:1px solid var(--line)}
   .res-top .back{position:absolute;left:12px;font-size:24px;color:var(--navy);background:none}
   .res-top .date{font-weight:700}
+  .export-btn{position:absolute;right:12px;top:12px;background:#F2F4F7;color:var(--navy);
+    font-weight:600;font-size:14px;border-radius:20px;padding:8px 14px}
+  .toast{position:fixed;left:50%;bottom:88px;transform:translate(-50%,20px);background:#101828;color:#fff;
+    padding:12px 18px;border-radius:24px;font-size:14px;font-weight:500;opacity:0;pointer-events:none;
+    transition:opacity .2s,transform .2s;z-index:60;max-width:88%;text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
   .grp{background:#fff;border-radius:var(--r);margin:14px 20px;box-shadow:var(--shadow);overflow:hidden}
   .grp-head{display:flex;align-items:center;gap:12px;padding:18px}
   .grp-head .gnm{font-size:20px;font-weight:600}
@@ -249,7 +255,8 @@
 
 <!-- ================= RESULTS ================= -->
 <section id="results" class="screen">
-  <div class="res-top"><button class="back" onclick="go('history')">‹</button><span class="date" id="resDate">Result</span></div>
+  <div class="res-top"><button class="back" onclick="go('history')">‹</button><span class="date" id="resDate">Result</span>
+    <button class="export-btn" id="exportBtn" onclick="exportRecord(curResult)">Export</button></div>
   <div id="simNote" class="sim-note"></div>
   <div id="resBody"></div>
   <div class="chat-bubble" id="chatBubble" onclick="healthChat()">
@@ -623,13 +630,15 @@ async function onCapture(e){
 }
 const loadImg = url => new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=url; });
 
-let lastMode = 'sim';
+let lastMode = 'sim', lastAnalysisFull = null;
 async function runAnalysis(url){
+  lastAnalysisFull = null;
   if(window.StripAnalysis && window.AR){
     try{
       const img = await loadImg(url);
       const res = window.StripAnalysis.analyzeElement(img);   // real: detect→warp→sample→correct→classify
       window.__lastAnalysis = res;                            // inspectable in console
+      lastAnalysisFull = res;
       if(res.ok && res.calibrated && res.scored === ANALYTES.length){
         lastMode = 'real';
         const r = {}; ANALYTES.forEach(a => r[a.key] = (res.reading[a.key] ?? a.normLo));
@@ -642,14 +651,57 @@ async function runAnalysis(url){
   }
   return simulateReading();
 }
+// Compact, storable snapshot of the measured analysis (per-pad Lab/level/quality).
+function analysisSnapshot(){
+  const res = lastAnalysisFull;
+  if(!res || !res.ok) return null;
+  const pads = {};
+  for(const k in (res.detail||{})){ const d = res.detail[k];
+    pads[k] = { lab:d.lab, corrected:d.corrected, level:d.index,
+                confidence:d.confidence, deltaE:d.deltaE, sd:d.sd, noisy:d.noisy,
+                at:d.at, screening:d.screening }; }
+  return { mode:lastMode, calibrated:res.calibrated, scored:res.scored,
+           ccResidual:res.ccResidual, strip:res.strip,
+           quality:res.quality, warnings:res.warnings, pads };
+}
 function finishTest(reading){
   const today = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-  history.unshift({date:today, reading,
+  history.unshift({date:today, reading, mode:lastMode,
+    analysis: analysisSnapshot(),                     // measured detail, or null when simulated
     protocol:{cooled:protocol.cooled, standMinutes:protocol.standMinutes,
               at:new Date().toISOString()}});
   saveHistory();
   renderHome();
   openResult(0, lastMode !== 'real', lastMode);
+}
+/* ---------- export a saved test as shareable JSON ---------- */
+function exportRecord(i){
+  const rec = history[i]; if(!rec) return;
+  const payload = { app:'home-checkup', exported:new Date().toISOString(),
+                    record:rec, calibrationVersion:'checkup-v3' };
+  const text = JSON.stringify(payload, null, 2);
+  downloadJSON(rec, text);                                  // always save a file
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text)
+      .then(()=>toast('Copied to clipboard + saved a file — paste or share it.'))
+      .catch(()=>toast('Saved test data as a file.'));
+  } else toast('Saved test data as a file.');
+}
+function downloadJSON(rec, text){
+  const safe = (rec.date||'test').replace(/[^\w]+/g,'-');
+  const blob = new Blob([text], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'checkup-'+safe+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+}
+let toastTimer=null;
+function toast(msg){
+  let t=document.getElementById('toast');
+  if(!t){ t=document.createElement('div'); t.id='toast'; document.body.appendChild(t); }
+  t.textContent=msg; t.className='toast show';
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{ t.className='toast'; }, 2600);
 }
 
 /* ---------- results ---------- */
@@ -670,7 +722,9 @@ const MODE_NOTE = {
   'sim-nodetect':  '⚙ Simulated analysis — detection didn’t complete.',
   'sim-err':       '⚠ Analysis error — simulated panel shown. See console.',
 };
+let curResult = 0;
 function openResult(i, simulated, mode){
+  curResult = i;
   const rec = history[i];
   document.getElementById('resDate').textContent = rec.date;
   const cb=document.getElementById('chatBubble'); if(cb) cb.style.display='';
