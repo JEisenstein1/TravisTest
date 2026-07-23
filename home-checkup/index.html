@@ -38,7 +38,9 @@
   .hero{background:
       radial-gradient(120% 90% at 80% 0%, #F5A24322 0 40%, transparent 60%),
       linear-gradient(160deg,#2A1A4A 0%,#5B2A6B 38%,#B5417A 62%,#E9713F 88%);
-    color:#fff;padding:22px 20px 34px;border-radius:0 0 26px 26px}
+    color:#fff;padding:22px 20px 34px;border-radius:0 0 26px 26px;position:relative}
+  .acct{position:absolute;top:16px;right:18px;font-size:12.5px;color:#ffffffcc;text-align:right;max-width:60%}
+  .acct a{color:#fff;text-decoration:underline;font-weight:600}
   .brand{font-size:30px;letter-spacing:.5px;font-weight:600}
   .greet{font-size:38px;line-height:1.05;margin:26px 0 22px;font-weight:500}
   .pill-btn{width:100%;background:#fff;color:var(--ink);border-radius:40px;
@@ -219,6 +221,7 @@
 <!-- ================= HOME ================= -->
 <section id="home" class="screen active">
   <div class="hero">
+    <div class="acct" id="acct"></div>
     <div class="brand serif">Ribbon</div>
     <div class="greet serif">Good morning,<br>Jon!</div>
     <button class="pill-btn" onclick="startCheckup()"><span>Start my checkup</span><span class="arrow">→</span></button>
@@ -338,28 +341,12 @@ function valStr(a, idx){
 const OK_LABEL = {Kidneys:'Within Range', Infection:'No Indication'};
 
 /* =====================================================================
-   STRIP ANALYSIS — INTEGRATION POINT (the only card-dependent piece)
-   Right now this returns a simulated reading so the whole flow is
-   clickable. To make it real, run on your own host with OpenCV.js and
-   replace the body with:
-     1. cv.aruco: detect the 4 corner fiducials on the ColoriTech card
-     2. getPerspectiveTransform + warpPerspective -> flat canonical card
-     3. sample mean RGB of each reference patch at KNOWN warped coords
-        (fill REFERENCE_PATCHES after characterizing the physical card)
-     4. fit color transform: observed patch RGB -> true Lab
-        (3x4 least-squares, or polynomial for a tighter fit)
-     5. sample each strip pad in the black channel at KNOWN warped coords
-     6. apply transform to each pad -> corrected Lab
-     7. classify each pad: nearest level by deltaE vs REFERENCE_CHART[key]
-   Returns {key: levelIndex}.
+   STRIP ANALYSIS — the reading is produced entirely by strip-analysis.js
+   (detect the 4 ArUco markers -> rectify -> colour-correct against the
+   reference patches -> classify each pad by nearest level in REFERENCE_CHART).
+   There is no simulated fallback: if a photo can't be read, the app asks
+   for a retake rather than inventing a result.
    ===================================================================== */
-// Simulation fallback — mirrors Jon's May 9 panel (all normal, SG high).
-function simulateReading(){
-  const r = {};
-  ANALYTES.forEach(a => r[a.key] = a.normLo);
-  r.sg = 6;                                     // 1.030 -> dehydrated (abnormal)
-  return r;
-}
 
 /* ---------- state ---------- */
 const STORE_KEY='checkup.history.v1';
@@ -626,7 +613,15 @@ async function onCapture(e){
   if(tickHandle) clearInterval(tickHandle);
   const btn = document.getElementById('ctaBtn'); if(btn){ btn.disabled=true; btn.textContent='Analyzing…'; }
   const reading = await runAnalysis(url);
-  finishTest(reading);
+  if(lastMode === 'real') finishTest(reading);        // only a real read is recorded
+  else showCaptureFailure(lastMode);                  // no simulated results — ask for a retake
+}
+// Honest failure: the card/strip couldn't be read. Show why and let them retake.
+function showCaptureFailure(mode){
+  const frame = document.getElementById('frame');
+  const why = FAIL_NOTE[mode] || 'Couldn’t read the strip. Reframe the whole card with space around all four markers, in even light, and retake.';
+  if(frame) frame.innerHTML = `<div style="color:#fff;padding:20px 22px;text-align:center;font-size:13.5px;line-height:1.5">${why}</div>`;
+  const btn = document.getElementById('ctaBtn'); if(btn){ btn.disabled=false; btn.textContent='Retake Photo'; }
 }
 const loadImg = url => new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=url; });
 
@@ -649,7 +644,7 @@ async function runAnalysis(url){
   } else {
     lastMode = window.StripAnalysis ? 'sim-nolib' : 'sim-nomodule';
   }
-  return simulateReading();
+  return null;                                          // non-real: nothing to record
 }
 // Compact, storable snapshot of the measured analysis (per-pad Lab/level/quality).
 function analysisSnapshot(){
@@ -711,24 +706,24 @@ function groupsFrom(reading){
   ANALYTES.forEach(a=>{ (map[a.group]=map[a.group]||[]).push(a); });
   return order.map(g=>({group:g, items:map[g]}));
 }
-const MODE_NOTE = {
-  'real':          '',
-  'sim-nochart':   '⚠ Card detected, but colour correction didn’t converge on this photo, so the levels below are simulated. Retake with the whole card in frame under even, indirect light. (Run <code>__lastAnalysis</code> in the console to see each pad’s measured Lab.)',
-  'sim-markers-not-found': '⚠ Couldn\u2019t find all four corner markers — showing a simulated panel. Make sure the whole card is in frame with space around it, in even light.',
-  'sim-corner-ordering-failed': '⚠ Found markers but couldn’t order the corners — simulated panel shown. Set MARKER_IDS once you know the card’s IDs.',
-  'sim-aruco-lib-missing': '⚙ Simulation mode: js-aruco2 isn’t loaded. Host this with the library to run the real reading.',
-  'sim-nolib':     '⚙ Simulation mode: js-aruco2 isn’t loaded. Host this with the library to run the real reading.',
-  'sim-nomodule':  '⚙ Simulation mode: strip-analysis.js isn’t loaded.',
-  'sim-nodetect':  '⚙ Simulated analysis — detection didn’t complete.',
-  'sim-err':       '⚠ Analysis error — simulated panel shown. See console.',
-};
+// Why a capture failed to produce a real reading — shown on the retake screen.
+const FAIL_NOTE = {
+  'sim-nochart':   'Card found, but colour correction did not converge on this photo. Retake with the whole card in frame under even, indirect light.',
+  'sim-markers-not-found': 'Could not find all four corner markers. Make sure the whole card is in frame with space around it, in even light, and retake.',
+  'sim-corner-ordering-failed': 'Found the markers but could not orient the card. Lay the card flat, keep all four markers visible, and retake.',
+  'sim-aruco-lib-missing': 'The detector did not load. Reload the app and try again.',
+  'sim-nolib':     'The detector did not load. Reload the app and try again.',
+  'sim-nomodule':  'The analysis module did not load. Reload the app and try again.',
+  'sim-nodetect':  'Detection did not complete. Reframe the whole card, in even light, and retake.',
+  'sim-err':       'Something went wrong reading this photo. Retake it, keeping the whole card in frame.',
+}
 let curResult = 0;
 function openResult(i, simulated, mode){
   curResult = i;
   const rec = history[i];
   document.getElementById('resDate').textContent = rec.date;
   const cb=document.getElementById('chatBubble'); if(cb) cb.style.display='';
-  let note = simulated ? (MODE_NOTE[mode] ?? '⚙ Simulated analysis — the flow and interpretation are real; scoring needs the card measured.') : '';
+  let note = '';
   if(rec.protocol){
     const pm=rec.protocol.standMinutes;
     const warn = pm!=null && (pm<5 || pm>30);
@@ -798,6 +793,14 @@ function renderHistory(which){
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('sw',e)));
 }
+// Signed-in chip — populated only when the Vercel auth backend is present.
+// On an unauthenticated/static host /api/me is absent, so the chip stays hidden.
+fetch('api/me',{headers:{'Accept':'application/json'}})
+  .then(r=>r.ok?r.json():null)
+  .then(u=>{ if(u&&u.authenticated){
+    const el=document.getElementById('acct');
+    if(el) el.innerHTML = `${u.email} · <a href="api/auth/logout">Sign out</a>`;
+  }}).catch(()=>{});
 renderHome();
 renderHistory('all');
 </script>
