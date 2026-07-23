@@ -343,14 +343,34 @@ g.CARD_CALIBRATION = {
        sg 10.9, glucose 7.0) are exactly those a contaminated sample would
        disturb: dissolved ions raise SG, protein residue hits the protein
        pad. Run 2 is the trustworthy reference. */
+    /* RE-MEASURED 2026-07-23 from 6 distilled-water photos (3 at 90s, 3 at
+       5:30) run through this exact pipeline. The 90s set (protocol timepoint)
+       is used here. It reproduced the original wet baseline to dE 0.5-2.2 on
+       9 of 10 pads — an independent confirmation — and corrected blood, which
+       differed by dE 5.2 (measured b* 60.6 vs the earlier 65.7). All 10 pads
+       read level 0 (pH level 1 by anchor design), i.e. water scores as a
+       clean negative, which is the correct result. Original values are kept
+       in BASELINE_WET_ORIG below for provenance. */
     BASELINE_WET: {
+      leukocytes:   {mode:'deviation', lab:[77.8,1.3,6.7]},
+      nitrite:      {mode:'deviation', lab:[83.6,-0.5,7.4]},
+      urobilinogen: {mode:'deviation', lab:[75.3,7,42.5]},
+      protein:      {mode:'deviation', lab:[80.4,-8,31.6]},
+      ph:           {mode:'range', lab:[64.3,19.7,49.9]},    // water pH is CO2-driven; needs buffers
+      blood:        {mode:'deviation', lab:[71,10.7,60.6]},
+      sg:           {mode:'anchor', lab:[38.5,-12.5,8]},     // distilled water = SG 1.000 (true endpoint)
+      ketone:       {mode:'deviation', lab:[71.8,2,12]},
+      bilirubin:    {mode:'deviation', lab:[81.4,-2.6,12.3]},
+      glucose:      {mode:'deviation', lab:[71.1,-18.6,-9.8]},
+    },
+    BASELINE_WET_ORIG: {
       leukocytes:   {mode:'deviation', lab:[78.4,1.5,6.9]},
       nitrite:      {mode:'deviation', lab:[85.0,-0.7,7.1]},
       urobilinogen: {mode:'deviation', lab:[75.6,7.5,44.0]},
       protein:      {mode:'deviation', lab:[81.6,-8.8,32.4]},
-      ph:           {mode:'range', lab:[64.5,20.5,51.3]},    // water pH is CO2-driven; needs buffers
+      ph:           {mode:'range', lab:[64.5,20.5,51.3]},
       blood:        {mode:'deviation', lab:[71.0,11.9,65.7]},
-      sg:           {mode:'anchor', lab:[37.3,-12.2,6.9]},   // distilled water = SG 1.000 (true endpoint)
+      sg:           {mode:'anchor', lab:[37.3,-12.2,6.9]},
       ketone:       {mode:'deviation', lab:[72.9,2.4,13.8]},
       bilirubin:    {mode:'deviation', lab:[82.7,-3.0,14.0]},
       glucose:      {mode:'deviation', lab:[71.6,-18.5,-9.7]},
@@ -393,16 +413,16 @@ g.CARD_CALIBRATION = {
      any analyte later with calibrate.html + a known sample; captured points
      supersede these. See docs note in README. */
   REFERENCE_CHART: {
-    leukocytes: [ {i:0, lab:[78.4,1.5,6.9]}, {i:1, lab:[72.6,8.6,-2.1]}, {i:2, lab:[64.8,15.7,-10.4]}, {i:3, lab:[55.3,23.5,-19.3]}, {i:4, lab:[42,33.1,-31.3]} ],
-    nitrite: [ {i:0, lab:[85,-0.7,7.1]}, {i:1, lab:[79.5,8.6,3.4]}, {i:2, lab:[67,24,1.3]} ],
-    urobilinogen: [ {i:0, lab:[75.6,7.5,44]}, {i:1, lab:[69.2,15.8,43.1]}, {i:2, lab:[60.8,26.2,38.8]}, {i:3, lab:[52,34.8,34.6]}, {i:4, lab:[42.8,42,26.9]}, {i:5, lab:[35.6,43.7,22.8]} ],
-    protein: [ {i:0, lab:[81.6,-8.8,32.4]}, {i:1, lab:[76.8,-16.3,24.9]}, {i:2, lab:[72.4,-22,14.2]}, {i:3, lab:[65.9,-26.8,0.1]}, {i:4, lab:[60.3,-25.4,-13.5]}, {i:5, lab:[54.6,-22.6,-22.1]} ],
-    ph: [ {i:0, lab:[56.9,33.8,47.6]}, {i:1, lab:[64.5,20.5,51.3]}, {i:2, lab:[68,4.4,45.7]}, {i:3, lab:[64.8,-11.3,36.3]}, {i:4, lab:[58.5,-24.4,11.8]}, {i:5, lab:[52.6,-24,-7.8]} ],
-    blood: [ {i:0, lab:[71,11.9,65.7]}, {i:1, lab:[70.1,0,54.9]}, {i:2, lab:[66.7,-14.1,39.5]}, {i:3, lab:[59.4,-23.4,24.3]}, {i:4, lab:[49.5,-25.3,15.9]} ],
-    sg: [ {i:0, lab:[37.3,-12.2,6.9]}, {i:1, lab:[42.8,-16.8,18]}, {i:2, lab:[48.7,-17.4,32.3]}, {i:3, lab:[53.4,-13,44.3]}, {i:4, lab:[58.5,-6.5,53.5]}, {i:5, lab:[63.7,0.6,62.6]}, {i:6, lab:[68.5,4.1,66.3]} ],
-    ketone: [ {i:0, lab:[72.9,2.4,13.8]}, {i:1, lab:[66.3,11.9,9.9]}, {i:2, lab:[55.9,23.6,3.1]}, {i:3, lab:[44.1,35,-2.8]}, {i:4, lab:[29.7,39,-12.7]} ],
-    bilirubin: [ {i:0, lab:[82.7,-3,14]}, {i:1, lab:[72.2,6.2,20.6]}, {i:2, lab:[62.8,14,18.6]}, {i:3, lab:[53.7,23.4,11.5]} ],
-    glucose: [ {i:0, lab:[71.6,-18.5,-9.7]}, {i:1, lab:[71.7,-22.7,23.9]}, {i:2, lab:[70.1,-11.6,43.4]}, {i:3, lab:[66.3,6.9,44.3]}, {i:4, lab:[53.4,19.6,36.6]}, {i:5, lab:[40.4,18.4,25.3]} ],
+    leukocytes: [ {i:0, lab:[77.8,1.3,6.7]}, {i:1, lab:[72,8.4,-2.3]}, {i:2, lab:[64.2,15.5,-10.6]}, {i:3, lab:[54.7,23.3,-19.5]}, {i:4, lab:[41.4,32.9,-31.5]} ],
+    nitrite: [ {i:0, lab:[83.6,-0.5,7.4]}, {i:1, lab:[78.1,8.8,3.7]}, {i:2, lab:[65.6,24.2,1.6]} ],
+    urobilinogen: [ {i:0, lab:[75.3,7,42.5]}, {i:1, lab:[68.9,15.3,41.6]}, {i:2, lab:[60.5,25.7,37.3]}, {i:3, lab:[51.7,34.3,33.1]}, {i:4, lab:[42.5,41.5,25.4]}, {i:5, lab:[35.3,43.2,21.3]} ],
+    protein: [ {i:0, lab:[80.4,-8,31.6]}, {i:1, lab:[75.6,-15.5,24.1]}, {i:2, lab:[71.2,-21.2,13.4]}, {i:3, lab:[64.7,-26,-0.7]}, {i:4, lab:[59.1,-24.6,-14.3]}, {i:5, lab:[53.4,-21.8,-22.9]} ],
+    ph: [ {i:0, lab:[56.7,33,46.2]}, {i:1, lab:[64.3,19.7,49.9]}, {i:2, lab:[67.8,3.6,44.3]}, {i:3, lab:[64.6,-12.1,34.9]}, {i:4, lab:[58.3,-25.2,10.4]}, {i:5, lab:[52.4,-24.8,-9.2]} ],
+    blood: [ {i:0, lab:[71,10.7,60.6]}, {i:1, lab:[70.1,-1.2,49.8]}, {i:2, lab:[66.7,-15.3,34.4]}, {i:3, lab:[59.4,-24.6,19.2]}, {i:4, lab:[49.5,-26.5,10.8]} ],
+    sg: [ {i:0, lab:[38.5,-12.5,8]}, {i:1, lab:[44,-17.1,19.1]}, {i:2, lab:[49.9,-17.7,33.4]}, {i:3, lab:[54.6,-13.3,45.4]}, {i:4, lab:[59.7,-6.8,54.6]}, {i:5, lab:[64.9,0.3,63.7]}, {i:6, lab:[69.7,3.8,67.4]} ],
+    ketone: [ {i:0, lab:[71.8,2,12]}, {i:1, lab:[65.2,11.5,8.1]}, {i:2, lab:[54.8,23.2,1.3]}, {i:3, lab:[43,34.6,-4.6]}, {i:4, lab:[28.6,38.6,-14.5]} ],
+    bilirubin: [ {i:0, lab:[81.4,-2.6,12.3]}, {i:1, lab:[70.9,6.6,18.9]}, {i:2, lab:[61.5,14.4,16.9]}, {i:3, lab:[52.4,23.8,9.8]} ],
+    glucose: [ {i:0, lab:[71.1,-18.6,-9.8]}, {i:1, lab:[71.2,-22.8,23.8]}, {i:2, lab:[69.6,-11.7,43.3]}, {i:3, lab:[65.8,6.8,44.2]}, {i:4, lab:[52.9,19.5,36.5]}, {i:5, lab:[39.9,18.3,25.2]} ],
   },
 };
 })(typeof window!=='undefined'?window:globalThis);
