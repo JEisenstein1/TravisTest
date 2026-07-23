@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chart Builder — ColoriTech</title>
+<link rel="icon" type="image/png" href="icon-192.png">
+<script src="vendor/js-aruco2.js" onerror="window.__noAruco=1"></script>
+<script src="card-calibration.js"></script>
+<script src="strip-analysis.js"></script>
+<style>
+ :root{--navy:#12235B;--accent:#F5A243}
+ *{box-sizing:border-box}
+ body{margin:0;font-family:'Inter',system-ui,sans-serif;background:#0B1435;color:#E8ECF7}
+ header{padding:16px 20px;border-bottom:1px solid #24305F}
+ h1{font-size:18px;margin:0}.sub{color:#8C97C4;font-size:13px;margin-top:4px}
+ .wrap{max-width:900px;margin:0 auto;padding:16px 20px 80px}
+ .panel{background:#111C40;border:1px solid #24305F;border-radius:14px;padding:16px;margin-bottom:14px}
+ label.file{display:inline-block;background:#182449;border:1px dashed #3A4C88;border-radius:10px;padding:10px 14px;cursor:pointer;color:#C3CBE8}
+ input[type=file]{display:none}
+ button.act{background:var(--navy);color:#fff;border:none;border-radius:10px;padding:11px 16px;font:inherit;font-weight:600;cursor:pointer}
+ button.ghost{background:transparent;color:#C3CBE8;border:1px solid #2A3A70;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}
+ button:disabled{opacity:.45;cursor:not-allowed}
+ select{background:#182449;color:#E8ECF7;border:1px solid #2A3A70;border-radius:8px;padding:9px;font:inherit}
+ .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+ .hint{color:#8C97C4;font-size:13px;line-height:1.55}
+ .ok{color:#8FE3A9}.warn{color:#FFC98C}.err{color:#FF9C8C}
+ table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+ td,th{border-bottom:1px solid #24305F;padding:6px 8px;text-align:left}
+ .sw{display:inline-block;width:15px;height:15px;border-radius:4px;border:1px solid #0006;vertical-align:middle;margin-right:6px}
+ textarea{width:100%;height:260px;background:#0B1435;color:#B8F5C8;border:1px solid #2A3A70;border-radius:10px;padding:12px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+ canvas{max-width:100%;border-radius:10px;border:1px solid #2A3A70;background:#000}
+ code{background:#0B1435;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Chart Builder — ColoriTech card</h1>
+  <div class="sub">Card geometry and colour patches are already measured. This tool captures the per-analyte <b>level colours</b> that turn readings into results.</div>
+</header>
+<div class="wrap">
+  <div id="status" class="panel hint"></div>
+
+  <div class="panel">
+    <b>How to use</b>
+    <div class="hint" style="margin-top:8px">
+      1. Dip a strip and photograph card + strip at <b>exactly the same 90-second mark</b> the app uses — timing bias here poisons every future reading.<br>
+      2. Load the photo. It auto-detects, rectifies, colour-corrects, and reads all 10 pads.<br>
+      3. For each analyte whose true level you know on that strip, pick the level and capture.<br>
+      4. Repeat across several strips per level; samples are averaged.<br>
+      5. Export and paste into <code>REFERENCE_CHART</code> in card-calibration.js.
+    </div>
+    <div class="hint" style="margin-top:10px">
+      <b>Free baseline:</b> a fresh dry or water-dipped strip gives every analyte its negative/lowest level at once — use the button below.
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <label class="file">Load card+strip photo<input type="file" accept="image/*" id="file"></label>
+      <button class="ghost" id="btnBaseline" disabled>Capture all as lowest level</button>
+    </div>
+    <div id="msg" class="hint"></div>
+    <table id="padTable"><thead><tr><th>analyte</th><th>measured colour</th><th>Lab</th><th>assign level</th><th></th></tr></thead><tbody></tbody></table>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar"><button class="act" id="btnExport">Generate REFERENCE_CHART</button><button class="ghost" id="btnCopy">Copy</button><button class="ghost" id="btnReset">Reset collected</button></div>
+    <table id="collected"><thead><tr><th>analyte</th><th>level</th><th>mean Lab</th><th>n</th></tr></thead><tbody></tbody></table>
+    <textarea id="out" spellcheck="false" placeholder="Click Generate…"></textarea>
+  </div>
+</div>
+
+<script>
+const LEVELS={
+ leukocytes:['Negative','Trace','+','++','+++'], nitrite:['Negative','Trace','Positive'],
+ urobilinogen:['0.2','1','2','4','8','12'], protein:['Negative','Trace','30','100','300','≥2000'],
+ ph:['5.0','6.0','6.5','7.0','7.5','8.0'], blood:['Negative','Trace','+','++','+++'],
+ sg:['1.000','1.005','1.010','1.015','1.020','1.025','1.030'], ketone:['Negative','Trace','+','++','+++'],
+ bilirubin:['Negative','+','++','+++'], glucose:['Negative','100','250','500','1000','≥2000']};
+const collected={};       // key -> level -> {labSum:[3], n}
+let lastDetail=null;
+
+const cal = window.CARD_CALIBRATION;
+const st=document.getElementById('status');
+if(window.__noAruco||!window.AR){
+  st.innerHTML='<span class="err">js-aruco2 not loaded.</span> Put <code>vendor/js-aruco2.js</code> beside this file — detection cannot run without it.';
+}else if(!cal){
+  st.innerHTML='<span class="err">card-calibration.js not loaded.</span>';
+}else{
+  st.innerHTML='<span class="ok">Ready.</span> Card calibration loaded: '+cal.REFERENCE_PATCHES.length+
+    ' reference patches, '+cal.PAD_SLOTS.length+' pads, dictionary '+cal.DICT_NAME+'.';
+}
+
+const loadImg=f=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(f);});
+
+document.getElementById('file').onchange=async e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  const msg=document.getElementById('msg');
+  msg.textContent='Analyzing…';
+  let img;
+  try{ img=await loadImg(f); }catch(err){ msg.innerHTML='<span class="err">Could not load image.</span>'; return; }
+  const r=window.StripAnalysis.analyzeElement(img);
+  if(!r.ok){
+    msg.innerHTML='<span class="err">Detection failed:</span> '+r.reason+
+      (r.missing?' (missing corners: '+r.missing.join(', ')+')':'')+
+      '<br>Make sure the entire card is in frame with space around it, evenly lit.';
+    lastDetail=null; document.querySelector('#padTable tbody').innerHTML='';
+    document.getElementById('btnBaseline').disabled=true; return;
+  }
+  lastDetail=r.detail;
+  msg.innerHTML='<span class="ok">Detected and colour-corrected.</span> '+
+    (r.warnings||[]).join(' · ')+' · patches used: '+r.patchesUsed;
+  document.getElementById('btnBaseline').disabled=false;
+  renderPads();
+};
+
+function renderPads(){
+  const tb=document.querySelector('#padTable tbody');
+  tb.innerHTML=cal.PAD_SLOTS.map(s=>{
+    const d=lastDetail[s.key]; if(!d||d.error) return `<tr><td>${s.key}</td><td colspan="4" class="err">${d?d.error:'no data'}</td></tr>`;
+    const c=d.corrected;
+    const opts=LEVELS[s.key].map((l,i)=>`<option value="${i}">${i}: ${l}</option>`).join('');
+    return `<tr><td><b>${s.key}</b></td>
+      <td><span class="sw" style="background:rgb(${c.join(',')})"></span>${c.join(', ')}</td>
+      <td>[${d.lab.join(', ')}]</td>
+      <td><select id="lv_${s.key}">${opts}</select></td>
+      <td><button class="ghost" onclick="capture('${s.key}')">Capture</button></td></tr>`;
+  }).join('');
+}
+function capture(key){
+  if(!lastDetail||!lastDetail[key]||lastDetail[key].error) return;
+  const lv=+document.getElementById('lv_'+key).value;
+  const lab=lastDetail[key].lab;
+  collected[key]=collected[key]||{};
+  const e=collected[key][lv]=collected[key][lv]||{labSum:[0,0,0],n:0};
+  e.labSum[0]+=lab[0]; e.labSum[1]+=lab[1]; e.labSum[2]+=lab[2]; e.n++;
+  renderCollected();
+}
+document.getElementById('btnBaseline').onclick=()=>{
+  if(!lastDetail) return;
+  cal.PAD_SLOTS.forEach(s=>{
+    const d=lastDetail[s.key]; if(!d||d.error) return;
+    collected[s.key]=collected[s.key]||{};
+    const e=collected[s.key][0]=collected[s.key][0]||{labSum:[0,0,0],n:0};
+    e.labSum[0]+=d.lab[0]; e.labSum[1]+=d.lab[1]; e.labSum[2]+=d.lab[2]; e.n++;
+  });
+  renderCollected();
+};
+function renderCollected(){
+  const rows=[];
+  for(const s of cal.PAD_SLOTS){ const k=s.key; if(!collected[k]) continue;
+    for(const lv of Object.keys(collected[k]).sort((a,b)=>a-b)){
+      const e=collected[k][lv], lab=e.labSum.map(v=>+(v/e.n).toFixed(1));
+      rows.push(`<tr><td>${k}</td><td>${lv}: ${LEVELS[k][lv]}</td><td>[${lab.join(', ')}]</td><td>${e.n}</td></tr>`);}}
+  document.querySelector('#collected tbody').innerHTML=rows.join('')||'<tr><td colspan="4" class="hint">nothing captured yet</td></tr>';
+}
+document.getElementById('btnExport').onclick=()=>{
+  const body=cal.PAD_SLOTS.map(s=>{
+    const k=s.key;
+    if(!collected[k]) return `    ${k}: [],`;
+    const lv=Object.keys(collected[k]).sort((a,b)=>a-b).map(l=>{
+      const e=collected[k][l];
+      return `{i:${l}, lab:[${e.labSum.map(v=>+(v/e.n).toFixed(1)).join(',')}]}`;});
+    return `    ${k}: [ ${lv.join(', ')} ],`;}).join('\n');
+  document.getElementById('out').value=
+    '// Paste over REFERENCE_CHART in card-calibration.js\n  REFERENCE_CHART: {\n'+body+'\n  },';
+};
+document.getElementById('btnCopy').onclick=()=>{const t=document.getElementById('out');t.select();document.execCommand('copy');};
+document.getElementById('btnReset').onclick=()=>{for(const k in collected) delete collected[k]; renderCollected();};
+renderCollected();
+</script>
+</body>
+</html>

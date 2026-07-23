@@ -9,6 +9,10 @@ weather — proving ground: **Long Island Sound**.
 > aid. Always verify against official, up-to-date charts and keep a proper
 > lookout. See the in-app disclaimer.
 
+> This repository also hosts **[Home Checkup](home-checkup/README.md)**, a
+> separate client-side urine test strip reader PWA, in `home-checkup/`. It is
+> deployed alongside Soundline at `/home-checkup/` on the Pages site.
+
 ## What works today
 
 - **Charting** — NOAA Chart Display Service overlay (official ENC, paper-chart

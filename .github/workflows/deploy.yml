@@ -2,7 +2,7 @@ name: Test & deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, claude/app-research-build-hyhnx0]
+    branches: [main, claude/home-checkup-urine-reader-6k29pb]
   workflow_dispatch:
 
 permissions:
@@ -28,6 +28,8 @@ jobs:
       - run: npm run build -w web
         env:
           VITE_BASE: /TravisTest/
+      # Home Checkup is a static app with no build step; serve it at /home-checkup/
+      - run: cp -r home-checkup web/dist/home-checkup
       - uses: actions/configure-pages@v5
         with:
           enablement: enabled

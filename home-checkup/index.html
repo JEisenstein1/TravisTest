@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Home Checkup</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#12235B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#12235B; --navy-deep:#0E1B45; --ink:#101828; --muted:#667085;
+    --bg:#EFF3F5; --card:#FFFFFF; --line:#EAECF0;
+    --green-bg:#D7F5DD; --green-tx:#127A36;
+    --red-bg:#FCE3E1; --red-tx:#CE3B2C;
+    --blue:#12235B; --seg:#E4E7EC;
+    --r:20px; --shadow:0 6px 24px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);
+    max-width:480px;margin:0 auto;min-height:100vh;position:relative;overflow-x:hidden}
+  .serif{font-family:'Fraunces',Georgia,serif}
+  button{font-family:inherit;cursor:pointer;border:none}
+  .hidden{display:none!important}
+
+  /* ---- app shell / screens ---- */
+  .screen{display:none;min-height:100vh;padding-bottom:40px}
+  .screen.active{display:block}
+
+  /* ---- home hero ---- */
+  .hero{background:
+      radial-gradient(120% 90% at 80% 0%, #F5A24322 0 40%, transparent 60%),
+      linear-gradient(160deg,#2A1A4A 0%,#5B2A6B 38%,#B5417A 62%,#E9713F 88%);
+    color:#fff;padding:22px 20px 34px;border-radius:0 0 26px 26px}
+  .brand{font-size:30px;letter-spacing:.5px;font-weight:600}
+  .greet{font-size:38px;line-height:1.05;margin:26px 0 22px;font-weight:500}
+  .pill-btn{width:100%;background:#fff;color:var(--ink);border-radius:40px;
+    padding:18px 22px;font-weight:700;font-size:17px;display:flex;align-items:center;
+    justify-content:space-between;margin-bottom:12px;box-shadow:var(--shadow)}
+  .pill-btn.grad{background:linear-gradient(90deg,#7B5CF0,#E9713F,#B5417A);color:#fff}
+  .arrow{font-size:20px}
+
+  .stat-band{background:var(--navy-deep);color:#fff;padding:26px 20px}
+  .stat-band .big{font-size:44px;font-weight:700;line-height:1}
+  .stat-band .sub{color:#B9C0DA;margin-top:4px;font-size:15px}
+  .ghost-btn{margin-top:18px;border:1.5px solid #45507F;color:#fff;background:transparent;
+    border-radius:30px;padding:12px 20px;font-weight:600;display:inline-flex;gap:10px;align-items:center}
+
+  .section{padding:22px 20px 4px}
+  .section h2{font-size:22px;margin:0 0 14px;font-weight:700}
+
+  /* health score */
+  .score-row{display:flex;gap:18px;align-items:center;background:var(--card);
+    border-radius:var(--r);padding:18px;box-shadow:var(--shadow);margin-bottom:8px}
+  .ring{--p:91;width:92px;height:92px;flex:none;border-radius:50%;
+    background:conic-gradient(var(--navy) calc(var(--p)*1%), #E4E7EC 0);
+    display:grid;place-items:center}
+  .ring>div{width:74px;height:74px;border-radius:50%;background:#fff;display:grid;place-items:center;text-align:center}
+  .ring .grade{font-size:24px;font-weight:700;color:var(--navy)}
+  .ring .frac{font-size:11px;color:var(--muted)}
+  .score-txt b{color:var(--navy)}
+  .score-txt .dot{color:#12B76A}
+
+  /* trends list */
+  .trend{display:flex;align-items:center;gap:14px;background:var(--card);
+    border-radius:16px;padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
+  .ic{width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;
+    color:#fff;font-weight:700;font-size:13px}
+  .trend .nm{font-weight:700}
+  .trend .vl{color:var(--muted);font-size:14px;margin-top:2px}
+  .trend .go{margin-left:auto;width:34px;height:34px;border-radius:50%;background:#101828;
+    color:#fff;display:grid;place-items:center;font-size:16px}
+
+  /* ---- wizard ---- */
+  .wz-top{position:sticky;top:0;background:var(--bg);z-index:5;display:flex;align-items:center;
+    justify-content:center;padding:18px 16px 8px;text-align:center}
+  .wz-top .back{position:absolute;left:14px;top:14px;font-size:24px;color:var(--navy);
+    background:none;padding:4px 8px}
+  .wz-top .step{font-size:15px;color:var(--ink)}
+  .wz-top .ttl{font-weight:700;font-size:17px}
+  .wz-body{padding:8px 20px}
+  .wz-img{width:100%;height:210px;border-radius:22px;margin:8px 0 20px;
+    background:#DfE3E8 center/cover;display:grid;place-items:center;color:#98A2B3;font-size:40px}
+  .wz-h{font-family:'Inter';font-weight:700;font-size:26px;line-height:1.15;margin:0 0 14px}
+  .wz-p{color:#475467;font-size:16px;line-height:1.5;margin:0 0 10px}
+  .wz-note{color:#B54708;background:#FFF6ED;border:1px solid #FEC84B55;border-radius:14px;
+    padding:14px 16px;font-size:14px;display:flex;gap:10px;margin-top:16px}
+  .cta{position:fixed;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;padding:14px 20px 22px;
+    background:linear-gradient(to top,var(--bg) 70%,transparent)}
+  .cta button{width:100%;background:var(--navy);color:#fff;border-radius:40px;padding:18px;
+    font-weight:700;font-size:17px}
+  .cta button:disabled{background:#9AA6CF;color:#eef}
+  .timer-box{background:#fff;border-radius:16px;padding:16px 18px;display:flex;justify-content:space-between;
+    align-items:center;box-shadow:var(--shadow);font-weight:600;margin:6px 0 4px}
+  .timer-box .t{font-variant-numeric:tabular-nums;font-weight:700;color:var(--navy);font-size:18px}
+  .wz-hero-blue{background:var(--navy);color:#fff;min-height:100vh}
+  .wz-hero-blue .wz-top{background:transparent;color:#fff}
+  .wz-hero-blue .wz-top .step,.wz-hero-blue .wz-top .ttl{color:#fff}
+  .wz-hero-blue .wz-top .back{color:#fff}
+  .wz-hero-blue .wz-h{color:#fff}
+  .cap-input{display:none}
+
+  /* capture preview */
+  .frame{position:relative;border-radius:22px;overflow:hidden;background:#0b1435;height:230px;
+    display:grid;place-items:center;margin:8px 0 18px}
+  .frame img{width:100%;height:100%;object-fit:cover}
+  .frame .guide{position:absolute;inset:22px;border:2px dashed #F5A24399;border-radius:10px;pointer-events:none}
+
+  /* ---- results ---- */
+  .res-top{position:sticky;top:0;background:#fff;z-index:5;display:flex;align-items:center;
+    justify-content:center;padding:16px;border-bottom:1px solid var(--line)}
+  .res-top .back{position:absolute;left:12px;font-size:24px;color:var(--navy);background:none}
+  .res-top .date{font-weight:700}
+  .grp{background:#fff;border-radius:var(--r);margin:14px 20px;box-shadow:var(--shadow);overflow:hidden}
+  .grp-head{display:flex;align-items:center;gap:12px;padding:18px}
+  .grp-head .gnm{font-size:20px;font-weight:600}
+  .badge{margin-left:auto;padding:8px 14px;border-radius:20px;font-weight:600;font-size:14px}
+  .badge.ok{background:var(--green-bg);color:var(--green-tx)}
+  .badge.bad{background:var(--red-bg);color:var(--red-tx)}
+  .an{padding:16px 18px;border-top:1px solid var(--line)}
+  .an-row{display:flex;justify-content:space-between;align-items:flex-start}
+  .an .anm{font-weight:700;font-size:17px}
+  .an .aval{color:var(--muted);font-size:14px;margin-top:2px}
+  .an .astat{color:var(--muted);font-size:15px;text-align:right}
+  .segs{display:flex;gap:6px;margin-top:6px;justify-content:flex-end}
+  .seg{height:5px;width:34px;border-radius:3px;background:var(--seg)}
+  .seg.on{background:#12B76A}
+  .seg.bad{background:#F04438}
+  .tri{font-size:12px;line-height:0;color:#101828;text-align:right;margin-top:8px}
+  .an .desc{color:#98A2B3;font-size:14px;line-height:1.45;margin-top:10px}
+
+  /* history */
+  .hcard{background:#fff;border-radius:var(--r);margin:0 20px 14px;box-shadow:var(--shadow);overflow:hidden}
+  .hcard .h1{display:flex;align-items:center;justify-content:space-between;padding:18px}
+  .hcard .dt{color:var(--muted);font-size:15px}
+  .hcard .st{font-size:26px;font-weight:700;display:flex;align-items:center;gap:8px;margin-top:2px}
+  .hcard .st.bad{color:var(--red-tx)}
+  .hcard .st.ok{color:var(--green-tx)}
+  .hcard .tag{display:inline-block;background:var(--red-bg);color:var(--red-tx);
+    padding:6px 14px;border-radius:10px;font-size:14px;font-weight:600;margin:0 18px 18px}
+  .hcard .tag.ok{background:var(--green-bg);color:var(--green-tx)}
+  .go-c{width:44px;height:44px;border-radius:50%;background:#F2F4F7;display:grid;place-items:center;
+    color:var(--navy);font-size:20px}
+  .tabs{display:flex;gap:8px;margin:6px 20px 18px;background:#E7ECEF;border-radius:14px;padding:5px}
+  .tabs button{flex:1;border-radius:10px;padding:12px;font-weight:600;background:transparent;color:var(--muted)}
+  .tabs button.on{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.gate{background:#fff;border-radius:16px;padding:16px 18px;box-shadow:var(--shadow);margin:6px 0 4px}
+  .gate-row{display:flex;gap:12px;align-items:flex-start;font-weight:600;cursor:pointer}
+  .gate-row input{width:22px;height:22px;flex:none;accent-color:var(--navy);margin-top:1px}
+  .gate-sub{display:flex;align-items:center;gap:10px;margin-top:14px;color:var(--muted);font-size:14px}
+  .stand{font-variant-numeric:tabular-nums;font-weight:700;color:var(--muted)}
+  .stand.good{color:#127A36}
+  .stand.stale{color:#CE3B2C}
+  .mini{background:#F2F4F7;border-radius:20px;padding:5px 12px;font-size:13px;color:var(--navy);font-weight:600}
+  .gate-note{color:#98A2B3;font-size:13px;margin-top:10px;line-height:1.45}
+  .proto{margin-top:10px;padding-top:10px;border-top:1px solid #C7D7FE;font-size:13px}
+  .proto.warn{color:#B54708}
+  .sim-note{margin:16px 20px 0;background:#EEF4FF;border:1px solid #C7D7FE;border-radius:14px;
+    padding:14px 16px;color:#2E4A9E;font-size:13.5px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<!-- ================= HOME ================= -->
+<section id="home" class="screen active">
+  <div class="hero">
+    <div class="brand serif">Ribbon</div>
+    <div class="greet serif">Good morning,<br>Jon!</div>
+    <button class="pill-btn" onclick="startCheckup()"><span>Start my checkup</span><span class="arrow">→</span></button>
+    <button class="pill-btn grad" onclick="alert('Health chat — not part of the strip pipeline; stub only.')"><span>Free Health Chat</span><span class="arrow">→</span></button>
+  </div>
+  <div class="stat-band">
+    <div class="big"><span id="testCount">03</span> tests</div>
+    <div class="sub">performed in the past 3 months</div>
+    <button class="ghost-btn" onclick="go('history')">🗂 Test History</button>
+  </div>
+  <div class="section">
+    <h2>Your Health Score</h2>
+    <div class="score-row">
+      <div class="ring" id="scoreRing"><div><span class="grade" id="scoreGrade">A-</span><span class="frac" id="scoreFrac">91/100</span></div></div>
+      <div class="score-txt">
+        <div><span class="dot">●</span> Your score is <b id="scoreLine">A- (91/100)</b></div>
+        <div style="color:var(--muted);margin-top:6px">Your score reflects your full health profile.</div>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <h2>3-month health trends</h2>
+    <div id="trendList"></div>
+  </div>
+</section>
+
+<!-- ================= WIZARD ================= -->
+<section id="wizard" class="screen"></section>
+
+<!-- ================= RESULTS ================= -->
+<section id="results" class="screen">
+  <div class="res-top"><button class="back" onclick="go('history')">‹</button><span class="date" id="resDate">Result</span></div>
+  <div id="simNote" class="sim-note"></div>
+  <div id="resBody"></div>
+</section>
+
+<!-- ================= HISTORY ================= -->
+<section id="history" class="screen">
+  <div class="res-top"><button class="back" onclick="go('home')">‹</button><span class="date">Test History</span></div>
+  <div class="tabs"><button class="on" id="tabAll" onclick="renderHistory('all')">All Tests</button><button id="tabAbn" onclick="renderHistory('abn')">Abnormal Results</button></div>
+  <div id="histList"></div>
+</section>
+
+<!-- Real reading pipeline. Vendor js-aruco2 next to this file (global `AR`).
+     If absent, the app runs in simulation mode and says so. -->
+<script src="vendor/js-aruco2.js"></script>
+<script src="card-calibration.js"></script>
+<script src="strip-analysis.js"></script>
+<script>
+/* =====================================================================
+   ANALYTE MODEL  — read directly off the Ribbon result screens.
+   Standard 10-parameter urine dipstick. Card-independent.
+   ===================================================================== */
+const ANALYTES = [
+  {key:'protein', name:'Protein', group:'Kidneys', unit:'mg/dL', color:'#12946A',
+   levels:['Negative','Trace','30','100','300','≥2000'], normLo:0, normHi:0,
+   desc:'Presence may suggest kidney disease, urinary tract infections, or other disorders.'},
+  {key:'bilirubin', name:'Bilirubin', group:'Liver', unit:'mg/dL', color:'#C1552A',
+   levels:['Negative','+','++','+++'], normLo:0, normHi:0,
+   desc:'Elevated levels suggest liver problems, bile duct obstruction, or certain blood disorders.'},
+  {key:'urobilinogen', name:'Urobilinogen', group:'Liver', unit:'mg/dL', color:'#D06A8C',
+   levels:['0.2','1','2','4','8','12'], normLo:0, normHi:1,
+   desc:'Elevated levels may indicate liver problems or hemolytic anemia.'},
+  {key:'glucose', name:'Glucose', group:'Glucose', unit:'mg/dL', color:'#7A4B18',
+   levels:['Negative','100','250','500','1000','≥2000'], normLo:0, normHi:0,
+   desc:'Presence may indicate diabetes, kidney problems, or other metabolic disorders.'},
+  {key:'leukocytes', name:'Leukocytes', group:'Infection', unit:'leu/µL', color:'#8B5FBF',
+   levels:['Negative','Trace','+','++','+++'], normLo:0, normHi:0,
+   desc:'Indicates a possible urinary tract infection or inflammation.'},
+  {key:'nitrite', name:'Nitrite', group:'Infection', unit:'', color:'#E1683C',
+   levels:['Negative','Trace','Positive'], normLo:0, normHi:0,
+   desc:'Suggests the presence of certain bacteria that can cause urinary tract infections.'},
+  {key:'sg', name:'Specific Gravity', group:'Hydration', unit:'', color:'#A0961E',
+   levels:['1.000','1.005','1.010','1.015','1.020','1.025','1.030'], normLo:1, normHi:5,
+   desc:"Abnormal levels may indicate dehydration or that the kidney's concentrating ability is off."},
+  {key:'ph', name:'pH', group:'pH', unit:'', color:'#146A63',
+   levels:['5.0','6.0','6.5','7.0','7.5','8.0'], normLo:0, normHi:5,
+   desc:'A urine pH between 4.5 and 8.0 is normal. 8.5 or higher could indicate kidney problems, UTIs, or certain metabolic conditions.'},
+  {key:'blood', name:'Blood', group:'Blood', unit:'Ery/µL', color:'#8A94A6',
+   levels:['Negative','Trace','+','++','+++'], normLo:0, normHi:0,
+   desc:'Presence may indicate kidney or urinary tract problems, infections, or certain cancers.'},
+  {key:'ketone', name:'Ketone', group:'Ketone', unit:'mg/dL', color:'#6B1E4A',
+   levels:['Negative','Trace','+','++','+++'], normLo:0, normHi:0,
+   desc:'Presence may indicate uncontrolled diabetes, starvation, or a very low-carbohydrate diet.'},
+];
+const byKey = k => ANALYTES.find(a=>a.key===k);
+const isNormal = (a,idx) => idx>=a.normLo && idx<=a.normHi;
+
+// display value w/ unit for a chosen level index
+function valStr(a, idx){
+  const lv = a.levels[idx];
+  if(['Negative','Trace','Positive','+','++','+++'].includes(lv)) return lv;
+  return lv + (a.unit? ' '+a.unit : '');
+}
+
+// group -> friendly "all normal" badge label (matches Ribbon wording)
+const OK_LABEL = {Kidneys:'Within Range', Infection:'No Indication'};
+
+/* =====================================================================
+   STRIP ANALYSIS — INTEGRATION POINT (the only card-dependent piece)
+   Right now this returns a simulated reading so the whole flow is
+   clickable. To make it real, run on your own host with OpenCV.js and
+   replace the body with:
+     1. cv.aruco: detect the 4 corner fiducials on the ColoriTech card
+     2. getPerspectiveTransform + warpPerspective -> flat canonical card
+     3. sample mean RGB of each reference patch at KNOWN warped coords
+        (fill REFERENCE_PATCHES after characterizing the physical card)
+     4. fit color transform: observed patch RGB -> true Lab
+        (3x4 least-squares, or polynomial for a tighter fit)
+     5. sample each strip pad in the black channel at KNOWN warped coords
+     6. apply transform to each pad -> corrected Lab
+     7. classify each pad: nearest level by deltaE vs REFERENCE_CHART[key]
+   Returns {key: levelIndex}.
+   ===================================================================== */
+// Simulation fallback — mirrors Jon's May 9 panel (all normal, SG high).
+function simulateReading(){
+  const r = {};
+  ANALYTES.forEach(a => r[a.key] = a.normLo);
+  r.sg = 6;                                     // 1.030 -> dehydrated (abnormal)
+  return r;
+}
+
+/* ---------- state ---------- */
+const STORE_KEY='checkup.history.v1';
+function loadHistory(){
+  try{ const raw=localStorage.getItem(STORE_KEY);
+       if(raw){ const h=JSON.parse(raw); if(Array.isArray(h)) return h; } }
+  catch(e){ console.warn('history load failed',e); }
+  return [];
+}
+function saveHistory(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(history)); }
+  catch(e){ console.warn('history save failed',e); }
+}
+let history = loadHistory();
+function seed(overrides){ const r={}; ANALYTES.forEach(a=>r[a.key]=a.normLo); return Object.assign(r,overrides); }
+
+/* ---------- router ---------- */
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+/* ---------- home ---------- */
+function renderHome(){
+  document.getElementById('testCount').textContent = String(history.length).padStart(2,'0');
+  if(!history.length){
+    document.getElementById('scoreGrade').textContent = '—';
+    document.getElementById('scoreFrac').textContent = 'no tests';
+    document.getElementById('scoreLine').textContent = 'not yet measured';
+    document.getElementById('scoreRing').style.setProperty('--p', 0);
+    document.getElementById('trendList').innerHTML =
+      `<div class="trend" onclick="startCheckup()">
+        <div class="ic" style="background:var(--navy)">✚</div>
+        <div><div class="nm">No tests yet</div><div class="vl">Run your first checkup to see trends</div></div>
+        <div class="go">›</div></div>`;
+    return;
+  }
+  const latest = history[0].reading;
+  const abn = ANALYTES.filter(a=>!isNormal(a, latest[a.key])).length;
+  const score = Math.max(40, 100 - abn*9);
+  const grade = score>=93?'A':score>=90?'A-':score>=87?'B+':score>=83?'B':score>=80?'B-':score>=70?'C':'D';
+  document.getElementById('scoreGrade').textContent = grade;
+  document.getElementById('scoreFrac').textContent = score+'/100';
+  document.getElementById('scoreLine').textContent = grade+' ('+score+'/100)';
+  document.getElementById('scoreRing').style.setProperty('--p', score);
+  const list = document.getElementById('trendList');
+  list.innerHTML = ANALYTES.map(a=>{
+    const idx = latest[a.key];
+    return `<div class="trend" onclick="openResult(0)">
+      <div class="ic" style="background:${a.color}">${a.name.slice(0,2).toUpperCase()}</div>
+      <div><div class="nm">${a.name}</div><div class="vl">${valStr(a,idx)}</div></div>
+      <div class="go">›</div></div>`;
+  }).join('');
+}
+
+/* ---------- wizard ---------- */
+const STEPS = [
+  {t:'Prepare Testing Area', h:'Place color card and napkin pad on a flat surface in a well-lit area.',
+   p:'Recommended: test in the morning when you first wake up. Concentrated urine gives the most accurate result.', btn:'Area is Prepared'},
+  {t:'Collect Sample', h:'Collect your sample first thing in the morning.',
+   p:'Fill the cup at least ¾ of the way. Then let it stand until it no longer feels warm — enzyme pads develop faster when warm, so a hot sample reads differently at 90 seconds.',
+   btn:'Sample Is Ready', gate:true},
+  {t:'Dip Test Strip', h:'Dip the test strip for 1–2 seconds.',
+   p:'Make sure all pads are wet. Then dry the edge before placing the strip in the black channel of the color card.', btn:'All Pads Are Wet'},
+  {t:'Dry Strip', h:"Tap only the strip's edges on the napkin to remove excess urine.",
+   p:'Excess urine on the strip must be removed.', btn:'Excess Urine Removed'},
+  {t:'Develop Test', h:'Wait for your test to develop, then take a photo of your test and card.',
+   p:'You will have 1 minute to photograph the color card and strip. Keep space around the card.', btn:'Take Photo', timer:90},
+  {t:'Take Photo', h:'Place the card in the black area, then take your photo.',
+   p:'Keep empty space around the color card so all four corner markers are visible.', btn:'Take Photo', capture:true, window:60},
+];
+let stepIdx = 0, tickHandle=null;
+
+function startCheckup(){
+  stepIdx=0;
+  protocol.cooled=false; protocol.standMinutes=null; protocol.standStartedAt=null;
+  if(standHandle){ clearInterval(standHandle); standHandle=null; }
+  renderStep(); go('wizard');
+}
+function nextStep(){
+  if(STEPS[stepIdx].gate && standHandle){ clearInterval(standHandle); standHandle=null; }
+  if(stepIdx<STEPS.length-1){stepIdx++; renderStep();}
+}
+function prevStep(){ if(tickHandle) clearInterval(tickHandle);
+  if(stepIdx===0){go('home');} else {stepIdx--; renderStep();} }
+
+function renderStep(){
+  if(tickHandle) clearInterval(tickHandle);
+  const s = STEPS[stepIdx];
+  const blue = !!s.capture;
+  const wz = document.getElementById('wizard');
+  wz.className = 'screen active' + (blue?' wz-hero-blue':'');
+  wz.innerHTML = `
+    <div class="wz-top">
+      <button class="back" onclick="prevStep()">‹</button>
+      <div><div class="step">Step ${stepIdx+1} of 6</div><div class="ttl">${s.t}</div></div>
+    </div>
+    <div class="wz-body">
+      ${s.capture ? captureBlock() : `<div class="wz-img">🧪</div>`}
+      <h1 class="wz-h">${s.h}</h1>
+      <p class="wz-p">${s.p}</p>
+      ${s.gate ? gateBlock() : ''}
+      ${s.timer ? `<div class="timer-box"><span>Time until developed</span><span class="t" id="tval">01:30</span></div>` : ''}
+      ${s.window ? `<div class="timer-box"><span>Time remaining to take photo</span><span class="t" id="tval">01:00</span></div>` : ''}
+      ${(s.timer||s.window) ? `<div class="wz-note">⚠ Keep space around the color card so all four corner markers stay in frame.</div>`:''}
+    </div>
+    <div class="cta"><button id="ctaBtn" onclick="stepAction()">${s.btn}</button></div>
+    <input type="file" accept="image/*" capture="environment" class="cap-input" id="capInput" onchange="onCapture(event)">
+  `;
+  if(s.gate){ startStandTimer(); syncGate(); }
+  if(s.timer) startCountdown(s.timer, false);
+  if(s.window) startCountdown(s.window, true);
+}
+
+/* ---------- sample protocol (temperature consistency) ---------- */
+const protocol = { cooled:false, standMinutes:null, standStartedAt:null };
+let standHandle=null;
+
+function gateBlock(){
+  return `
+  <div class="gate">
+    <label class="gate-row">
+      <input type="checkbox" id="gCooled" ${protocol.cooled?'checked':''} onchange="syncGate()">
+      <span>Sample has stood until it no longer feels warm</span>
+    </label>
+    <div class="gate-sub">
+      Standing time
+      <span class="stand" id="standLive">—</span>
+      <button class="mini" onclick="resetStand()">restart</button>
+    </div>
+    <div class="gate-note">Aim for room temperature (usually 5–10 min), and dip within about 30 minutes of collecting.</div>
+  </div>`;
+}
+function startStandTimer(){
+  if(!protocol.standStartedAt) protocol.standStartedAt = Date.now();
+  if(standHandle) clearInterval(standHandle);
+  const tick=()=>{
+    const el=document.getElementById('standLive'); if(!el) return;
+    const mins=(Date.now()-protocol.standStartedAt)/60000;
+    protocol.standMinutes=+mins.toFixed(1);
+    const m=Math.floor(mins), s=Math.floor((mins-m)*60);
+    el.textContent = m+'m '+String(s).padStart(2,'0')+'s';
+    el.className = 'stand' + (mins>=5 ? ' good' : '') + (mins>30 ? ' stale' : '');
+  };
+  tick(); standHandle=setInterval(tick,1000);
+}
+function resetStand(){ protocol.standStartedAt=Date.now(); startStandTimer(); }
+function syncGate(){
+  const cb=document.getElementById('gCooled'); if(cb) protocol.cooled=cb.checked;
+  const btn=document.getElementById('ctaBtn');
+  if(btn){ btn.disabled=!protocol.cooled;
+    btn.textContent = protocol.cooled ? 'Sample Is Ready' : 'Confirm sample has cooled'; }
+}
+function captureBlock(){
+  return `<div class="frame" id="frame"><span style="color:#7f8db5;font-size:40px">📷</span><div class="guide"></div></div>`;
+}
+function startCountdown(sec, isWindow){
+  const btn = ()=>document.getElementById('ctaBtn');
+  const tv  = ()=>document.getElementById('tval');
+  let left = sec;
+  if(!isWindow){ btn().disabled = true; btn().textContent = 'You can take photo in ' + fmt(left); }
+  tickHandle = setInterval(()=>{
+    left--; if(tv()) tv().textContent = fmt(Math.max(left,0));
+    if(!isWindow){ if(btn()) btn().textContent = left>0 ? 'You can take photo in '+fmt(left) : 'Take Photo';
+      if(left<=0){ btn().disabled=false; clearInterval(tickHandle);} }
+    else if(left<=0){ clearInterval(tickHandle);
+      if(document.getElementById('frame'))
+        document.getElementById('frame').innerHTML='<div style="color:#f5a243;padding:20px;text-align:center;font-size:14px">Time expired. Redip a fresh strip and try again — the reading window has passed.</div>';
+    }
+  },1000);
+}
+const fmt = s => Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+
+function stepAction(){
+  const s = STEPS[stepIdx];
+  if(s.capture){ document.getElementById('capInput').click(); return; }
+  nextStep();
+}
+async function onCapture(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const url = URL.createObjectURL(file);
+  const frame = document.getElementById('frame');
+  if(frame) frame.innerHTML = `<img src="${url}"><div class="guide"></div>`;
+  if(tickHandle) clearInterval(tickHandle);
+  const btn = document.getElementById('ctaBtn'); if(btn){ btn.disabled=true; btn.textContent='Analyzing…'; }
+  const reading = await runAnalysis(url);
+  finishTest(reading);
+}
+const loadImg = url => new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=url; });
+
+let lastMode = 'sim';
+async function runAnalysis(url){
+  if(window.StripAnalysis && window.AR){
+    try{
+      const img = await loadImg(url);
+      const res = window.StripAnalysis.analyzeElement(img);   // real: detect→warp→sample→correct→classify
+      window.__lastAnalysis = res;                            // inspectable in console
+      if(res.ok && res.calibrated && res.scored === ANALYTES.length){
+        lastMode = 'real';
+        const r = {}; ANALYTES.forEach(a => r[a.key] = (res.reading[a.key] ?? a.normLo));
+        return r;
+      }
+      lastMode = res.ok ? 'sim-nochart' : ('sim-' + (res.reason || 'nodetect'));
+    }catch(err){ lastMode = 'sim-err'; }
+  } else {
+    lastMode = window.StripAnalysis ? 'sim-nolib' : 'sim-nomodule';
+  }
+  return simulateReading();
+}
+function finishTest(reading){
+  const today = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  history.unshift({date:today, reading,
+    protocol:{cooled:protocol.cooled, standMinutes:protocol.standMinutes,
+              at:new Date().toISOString()}});
+  saveHistory();
+  renderHome();
+  openResult(0, lastMode !== 'real', lastMode);
+}
+
+/* ---------- results ---------- */
+function groupsFrom(reading){
+  const order = ['Kidneys','Liver','Glucose','Infection','Hydration','pH','Blood','Ketone'];
+  const map = {};
+  ANALYTES.forEach(a=>{ (map[a.group]=map[a.group]||[]).push(a); });
+  return order.map(g=>({group:g, items:map[g]}));
+}
+const MODE_NOTE = {
+  'real':          '',
+  'sim-nochart':   '✓ Card detected, rectified and colour-corrected — the geometry and colour pipeline are working. Scoring is simulated until the per-analyte level colours are captured in calibrate.html. (Run <code>__lastAnalysis</code> in the console to see each pad\u2019s measured Lab.)',
+  'sim-markers-not-found': '⚠ Couldn\u2019t find all four corner markers — showing a simulated panel. Make sure the whole card is in frame with space around it, in even light.',
+  'sim-corner-ordering-failed': '⚠ Found markers but couldn’t order the corners — simulated panel shown. Set MARKER_IDS once you know the card’s IDs.',
+  'sim-aruco-lib-missing': '⚙ Simulation mode: js-aruco2 isn’t loaded. Host this with the library to run the real reading.',
+  'sim-nolib':     '⚙ Simulation mode: js-aruco2 isn’t loaded. Host this with the library to run the real reading.',
+  'sim-nomodule':  '⚙ Simulation mode: strip-analysis.js isn’t loaded.',
+  'sim-nodetect':  '⚙ Simulated analysis — detection didn’t complete.',
+  'sim-err':       '⚠ Analysis error — simulated panel shown. See console.',
+};
+function openResult(i, simulated, mode){
+  const rec = history[i];
+  document.getElementById('resDate').textContent = rec.date;
+  let note = simulated ? (MODE_NOTE[mode] ?? '⚙ Simulated analysis — the flow and interpretation are real; scoring needs the card measured.') : '';
+  if(rec.protocol){
+    const pm=rec.protocol.standMinutes;
+    const warn = pm!=null && (pm<5 || pm>30);
+    note += `<div class="proto ${warn?'warn':''}">Sample protocol: ${rec.protocol.cooled?'cooled to room temp':'<b>not confirmed cooled</b>'}`
+         + (pm!=null? ` · stood ${pm} min`:'')
+         + (warn ? (pm<5 ? ' — shorter than usual, may read warm' : ' — longer than usual, sample may have degraded') : '')
+         + `</div>`;
+  }
+  document.getElementById('simNote').innerHTML = note;
+  document.getElementById('simNote').style.display = note ? 'block':'none';
+  const body = document.getElementById('resBody');
+  body.innerHTML = groupsFrom(rec.reading).map(gr=>{
+    const anyBad = gr.items.some(a=>!isNormal(a, rec.reading[a.key]));
+    const label = anyBad ? 'Abnormal' : (OK_LABEL[gr.group]||'Normal');
+    const rows = gr.items.map(a=>{
+      const idx = rec.reading[a.key]; const ok = isNormal(a,idx);
+      const segs = a.levels.map((_,j)=>{
+        let cls='seg'; if(isNormal(a,j)) cls+=' on'; if(j===idx && !ok) cls='seg bad';
+        return `<div class="${cls}"></div>`;
+      }).join('');
+      const triPad = idx*40; // 34px seg + 6 gap
+      return `<div class="an">
+        <div class="an-row">
+          <div><div class="anm">${a.name}</div><div class="aval">${valStr(a,idx)}</div></div>
+          <div style="min-width:190px">
+            <div class="astat">${ok? (idx===0?'Negative':'Normal') : (a.key==='sg'?'Dehydrated':'Elevated')}</div>
+            <div class="segs">${segs}</div>
+            <div class="tri" style="padding-right:${(a.levels.length-1-idx)*40+14}px">▼</div>
+          </div>
+        </div>
+        <div class="desc">${a.desc}</div>
+      </div>`;
+    }).join('');
+    return `<div class="grp">
+      <div class="grp-head"><div class="ic" style="background:${gr.items[0].color};width:34px;height:34px;font-size:11px">${gr.group.slice(0,2)}</div>
+        <div class="gnm">${gr.group}</div>
+        <div class="badge ${anyBad?'bad':'ok'}">${label}</div></div>
+      ${rows}
+    </div>`;
+  }).join('');
+  go('results');
+}
+
+/* ---------- history ---------- */
+function renderHistory(which){
+  document.getElementById('tabAll').classList.toggle('on', which!=='abn');
+  document.getElementById('tabAbn').classList.toggle('on', which==='abn');
+  const rows = history.map((rec,i)=>({rec,i}))
+    .filter(({rec})=>{
+      if(which!=='abn') return true;
+      return ANALYTES.some(a=>!isNormal(a, rec.reading[a.key]));
+    });
+  document.getElementById('histList').innerHTML = rows.map(({rec,i})=>{
+    const abnGroups = groupsFrom(rec.reading).filter(gr=>gr.items.some(a=>!isNormal(a,rec.reading[a.key]))).map(g=>g.group);
+    const bad = abnGroups.length>0;
+    return `<div class="hcard" onclick="openResult(${i})">
+      <div class="h1"><div><div class="dt">Ribbon Checkup - ${rec.date}</div>
+        <div class="st ${bad?'bad':'ok'}">${bad?'⚠ Abnormal':'✓ Normal'}</div></div>
+        <div class="go-c">→</div></div>
+      ${abnGroups.map(g=>`<span class="tag">${g}</span>`).join('') || `<span class="tag ok">All within range</span>`}
+    </div>`;
+  }).join('') || '<div class="hcard"><div class="h1"><div><div class="dt">No tests yet</div><div class="st ok">Run your first checkup</div></div></div></div>';
+}
+
+/* ---------- boot ---------- */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('sw',e)));
+}
+renderHome();
+renderHistory('all');
+</script>
+</body>
+</html>
