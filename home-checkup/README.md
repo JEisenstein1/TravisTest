@@ -4,30 +4,52 @@ A client-side urine test strip reader. Photograph a strip laid in the Ribbon
 ColoriTech colour card; the app detects the card, flattens it, colour-corrects
 against 208 printed reference patches, locates the strip, and reads all ten pads.
 
-Everything runs in the browser. No backend, no server, no data leaves the device.
+The reading runs entirely in the browser and your test history stays in the
+browser (localStorage) — no health data is sent anywhere. When deployed to
+Vercel with the auth layer below, a thin serverless layer handles **Google
+sign-in only**; it gates who can open the app and never sees your results.
 
-## Deploy to Vercel
+## Deploy to Vercel with Google sign-in
 
-Static site, no build step.
+The app ships a Vercel auth layer (`api/auth/*` functions + `middleware.js`)
+that puts the whole app behind Google OAuth, restricted to an email allow list.
+This is real gating — the Edge middleware checks a signed session cookie before
+serving any asset, so the app can't be opened (or its files read) without
+signing in as an allowed account.
 
-```bash
-npm i -g vercel      # once
-cd this-folder
-vercel               # preview
-vercel --prod        # production
-```
+**One-time setup (needs your Google and Vercel accounts):**
 
-Or drag the folder onto vercel.com/new, or push to a Git repo and import it.
-Framework preset: **Other**. Build command: none. Output directory: `./`.
+1. **Create Google OAuth credentials** — [Google Cloud Console](https://console.cloud.google.com/)
+   → *APIs & Services* → *Credentials* → *Create credentials* → *OAuth client ID*.
+   - Configure the *OAuth consent screen* (External; add yourself as a test user).
+   - Application type: **Web application**.
+   - Authorized redirect URI: `https://YOUR-APP.vercel.app/api/auth/callback`
+     (add `http://localhost:3000/api/auth/callback` too if you use `vercel dev`).
+   - Copy the **Client ID** and **Client secret**.
 
-HTTPS matters: `getUserMedia` and service workers only run on a secure origin.
-Vercel gives you that automatically. `localhost` also counts during development.
+2. **Import to Vercel** — [vercel.com/new](https://vercel.com/new), import this
+   Git repo. Set **Root Directory** to `home-checkup`. Framework preset:
+   **Other**. No build command.
 
-Local preview:
+3. **Set environment variables** (Vercel → Settings → Environment Variables),
+   see `.env.example`:
+   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — from step 1.
+   - `SESSION_SECRET` — a long random string (`openssl rand -hex 32`).
+   - `ALLOWED_EMAILS` — comma-separated Google emails allowed in (e.g. your own).
+     Sign-in is denied if this is empty.
 
-```bash
-npx serve .          # then open the printed URL on your phone, same wifi
-```
+4. **Deploy.** Visit the app: you'll be sent to Google, and after signing in as
+   an allowed account you land in the app. The home screen shows the signed-in
+   email with a **Sign out** link.
+
+HTTPS matters: `getUserMedia` (camera) and service workers only run on a secure
+origin. Vercel provides that automatically; `localhost` also counts in dev.
+
+CLI alternative: `npm i -g vercel`, then `vercel` / `vercel --prod` from the
+`home-checkup/` folder (still set the env vars in the dashboard or via
+`vercel env`).
+
+Local preview **without** auth (open, no gating): `npx serve .` from this folder.
 
 ## Installing on your phone
 

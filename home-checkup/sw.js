@@ -1,5 +1,5 @@
 /* Offline cache. Bump CACHE when you change any asset. */
-const CACHE = 'checkup-v4';
+const CACHE = 'checkup-v5';
 const ASSETS = [
   './', './index.html', './calibrate.html',
   './card-calibration.js', './strip-analysis.js',
@@ -16,6 +16,8 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  // Never cache or intercept auth/API calls — always hit the network.
+  if (new URL(e.request.url).pathname.startsWith('/api/')) return;
   e.respondWith(
     caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
       if (res.ok && new URL(e.request.url).origin === location.origin) {
