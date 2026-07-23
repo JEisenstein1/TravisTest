@@ -40,6 +40,9 @@ jobs:
 
   deploy:
     needs: build
+    # the github-pages environment only allows deployments from main;
+    # branch pushes still run build+tests above as CI
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
